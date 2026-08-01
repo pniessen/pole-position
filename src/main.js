@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { createTrack, curvatureAt, posAt, TRACKS } from './track.js';
+import { createTrack, curvatureAt, posAt, countTurns, TRACKS } from './track.js';
 import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CARS } from './handling.js';
 import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
-import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
+import { createHud, updateHud, showAttract, showSelect, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
+import { renderCarPhotos, renderTrackThumb } from './showroom.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
 import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic, updateCrowd } from './audio.js';
 
@@ -41,7 +42,6 @@ function setTrack(index) {
   traffic = createTraffic(track.length);
   race = createRace(track.length, track.checkpoints);
   refreshMinimap();
-  showMenu();
 }
 
 function setCar(index) {
@@ -51,11 +51,73 @@ function setCar(index) {
   disposeScene(hood);
   hood = makeHood(carDef.hood);
   camera.add(hood);
-  showMenu();
 }
 
-function showMenu() {
-  showAttract(hud, scores, track.name, carDef.name, carDef.desc);
+// --- selection menu flow: title → car showroom → track select → race ---
+
+let menuScreen = 'title';
+const carPhotos = renderCarPhotos(CARS);
+const trackThumbs = [];
+
+function openTitle() {
+  menuScreen = 'title';
+  showAttract(hud, scores);
+}
+
+function openCarSelect() {
+  menuScreen = 'car';
+  const spec = carDef.spec;
+  showSelect(hud, {
+    title: 'CHOOSE YOUR CAR',
+    image: carPhotos[carIndex],
+    name: carDef.name,
+    desc: carDef.desc,
+    stats: [
+      { label: 'TOP SPEED', frac: spec.maxSpeed / 90, value: `${Math.round(spec.maxSpeed * 3.6)} KM/H` },
+      { label: 'ACCELERATION', frac: spec.accel / 35 },
+      { label: 'HANDLING', frac: spec.steerSpeed / 20 },
+      { label: 'OFFROAD GRIP', frac: spec.offroadMax / 50 },
+    ],
+  });
+}
+
+function openTrackSelect() {
+  menuScreen = 'track';
+  trackThumbs[trackIndex] ??= renderTrackThumb(track);
+  showSelect(hud, {
+    title: 'CHOOSE YOUR TRACK',
+    image: trackThumbs[trackIndex],
+    name: track.name,
+    desc: track.tagline,
+    stats: [
+      { label: 'LENGTH', value: `${(track.length / 1000).toFixed(1)} KM` },
+      { label: 'TURNS', value: String(countTurns(track)) },
+      { label: 'LAPS', value: '4' },
+    ],
+  });
+}
+
+function menuKey(code) {
+  const prev = code === 'ArrowLeft' || code === 'KeyA' || code === 'ArrowUp' || code === 'KeyW';
+  const next = code === 'ArrowRight' || code === 'KeyD' || code === 'ArrowDown' || code === 'KeyS';
+  const confirm = code === 'Enter' || code === 'Space';
+  if (menuScreen === 'title') {
+    openCarSelect();
+    return;
+  }
+  if (menuScreen === 'car') {
+    if (prev) { setCar(carIndex - 1); openCarSelect(); }
+    else if (next) { setCar(carIndex + 1); openCarSelect(); }
+    else if (confirm) openTrackSelect();
+    else if (code === 'Escape') openTitle();
+    return;
+  }
+  if (menuScreen === 'track') {
+    if (prev) { setTrack(trackIndex - 1); openTrackSelect(); }
+    else if (next) { setTrack(trackIndex + 1); openTrackSelect(); }
+    else if (confirm) { menuScreen = null; startFromMenu(); }
+    else if (code === 'Escape') openCarSelect();
+  }
 }
 
 function refreshMinimap() {
@@ -85,7 +147,6 @@ const hud = createHud();
 let scores = loadScores();
 let enteringInitials = false;
 refreshMinimap();
-showMenu();
 
 const audio = createAudio();
 
@@ -102,11 +163,7 @@ addEventListener('keydown', (e) => {
   unlock(audio);
   if (enteringInitials) return;
   if (race.phase === 'attract') {
-    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { setTrack(trackIndex - 1); return; }
-    if (e.code === 'ArrowRight' || e.code === 'KeyD') { setTrack(trackIndex + 1); return; }
-    if (e.code === 'ArrowUp' || e.code === 'KeyW') { setCar(carIndex - 1); return; }
-    if (e.code === 'ArrowDown' || e.code === 'KeyS') { setCar(carIndex + 1); return; }
-    if (e.code === 'Enter' || e.code === 'Space') startFromMenu();
+    menuKey(e.code);
     return;
   }
   keys.add(e.code);
@@ -116,7 +173,7 @@ addEventListener('keydown', (e) => {
     car = createCarState();
     traffic = createTraffic(track.length);
     race = createRace(track.length, track.checkpoints);
-    showMenu();
+    openCarSelect();
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -183,6 +240,8 @@ function update(dt) {
   setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
 
+openTitle();
+
 const DT = 1 / 60;
 let acc = 0;
 let last = performance.now();
@@ -200,7 +259,7 @@ requestAnimationFrame(frame);
 window.__game = {
   getState: () => ({ phase: race.phase, s: car.s, x: car.x, speed: car.speed,
     lap: race.lap, timeLeft: race.timeLeft, score: race.score, crashed: isCrashed(car) }),
-  press: (code) => { keys.add(code); if (race.phase === 'attract') startFromMenu(); },
+  press: (code) => { if (race.phase === 'attract') menuKey(code); else keys.add(code); },
   release: (code) => keys.delete(code),
   crash: () => { car = crashCar(car); playCrash(audio); },
   setTrack: (i) => setTrack(i),

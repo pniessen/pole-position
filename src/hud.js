@@ -24,11 +24,18 @@ export function createHud() {
     <div class="screen" id="attract">
       <h1>POLE POSITION</h1>
       <h2>First-person arcade racer</h2>
-      <h2 class="trackpick">&#9664; <span id="track-name"></span> &#9654;</h2>
-      <h2 class="trackpick carpick">&#9650; <span id="car-name"></span> &#9660;</h2>
-      <div id="car-desc"></div>
       <div id="attract-scores"></div>
-      <h2 class="blink">&#9664;&#9654; track &middot; &#9650;&#9660; car &middot; Enter to race</h2>
+      <h2 class="blink">Press any key</h2>
+    </div>
+    <div class="screen hidden" id="select">
+      <h2 id="select-title" class="select-title"></h2>
+      <div class="select-card">
+        <img id="select-image" alt="" />
+        <h1 id="select-name" class="select-name">&#9664; <span id="select-name-text"></span> &#9654;</h1>
+        <div id="select-desc"></div>
+        <div id="select-stats"></div>
+      </div>
+      <h2 class="blink" id="select-prompt">&#9664; &#9654; browse &middot; Enter confirm &middot; Esc back</h2>
     </div>
     <div class="screen hidden" id="initials">
       <h2>High score! Enter your initials</h2>
@@ -48,8 +55,9 @@ export function createHud() {
     root,
     score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'),
     countdown: $('countdown'), banner: $('banner'), crashflash: $('crashflash'),
-    attract: $('attract'), attractScores: $('attract-scores'), trackName: $('track-name'),
-    carName: $('car-name'), carDesc: $('car-desc'),
+    attract: $('attract'), attractScores: $('attract-scores'),
+    select: $('select'), selectTitle: $('select-title'), selectImage: $('select-image'),
+    selectName: $('select-name-text'), selectDesc: $('select-desc'), selectStats: $('select-stats'),
     initials: $('initials'), entry: $('entry'),
     gameover: $('gameover'), gameoverTitle: $('gameover-title'),
     finalScore: $('final-score'), gameoverScores: $('gameover-scores'),
@@ -153,18 +161,33 @@ export function updateHud(hud, race, car, dt) {
   hud.wasCrashed = crashed;
 }
 
-export function showAttract(hud, scores, trackName = '', carName = '', carDesc = '') {
+export function showAttract(hud, scores) {
+  hideScreens(hud);
   hud.attract.classList.remove('hidden');
   hud.attractScores.innerHTML = scoreTable(scores);
-  hud.trackName.textContent = trackName;
-  hud.carName.textContent = carName;
-  hud.carDesc.textContent = carDesc;
-  hud.gameover.classList.add('hidden');
-  hud.initials.classList.add('hidden');
+}
+
+// Generic picker screen used for both the car showroom and track select.
+// entry: { title, image, name, desc, stats: [{label, frac?, value?}] }
+export function showSelect(hud, entry) {
+  hideScreens(hud);
+  hud.select.classList.remove('hidden');
+  hud.selectTitle.textContent = entry.title;
+  hud.selectImage.src = entry.image;
+  hud.selectName.textContent = entry.name;
+  hud.selectDesc.textContent = entry.desc;
+  hud.selectStats.innerHTML = entry.stats.map((s) => {
+    const value = s.value ? `<span class="stat-value">${s.value}</span>` : '';
+    const bar = s.frac !== undefined
+      ? `<span class="stat-bar"><span class="stat-fill" style="width:${Math.round(Math.min(1, s.frac) * 100)}%"></span></span>`
+      : '';
+    return `<div class="stat-row"><span class="stat-label">${s.label}</span>${bar}${value}</div>`;
+  }).join('');
 }
 
 export function hideScreens(hud) {
   hud.attract.classList.add('hidden');
+  hud.select.classList.add('hidden');
   hud.gameover.classList.add('hidden');
   hud.initials.classList.add('hidden');
 }

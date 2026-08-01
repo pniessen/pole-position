@@ -9,8 +9,8 @@ function jitter(n) {
 }
 
 const ROADCOL = new THREE.Color(0x555a5e);
-const RUMBLE_A = new THREE.Color(0xe33f3f);
-const RUMBLE_B = new THREE.Color(0xf2f2f2);
+const RUMBLE_A = new THREE.Color(0xe01818);
+const RUMBLE_B = new THREE.Color(0xffffff);
 const LINE = new THREE.Color(0xf7f7e8);
 
 export const RIVAL_COLORS = [0xff5533, 0xffcc22, 0x22ccff, 0xcc44ff, 0x44ff77, 0xff8844, 0x4488ff];
@@ -23,7 +23,7 @@ function buildRoad(track) {
   // no vertex-color bleeding between road, centerline, and rumble strips.
   const step = 3;
   const half = ROAD_HALF_WIDTH;
-  const rumble = half + 1.6;
+  const rumble = half + 2.0;
   const n = Math.ceil(track.length / step);
   // columns: rumble | road | lane wear | road | centerline | road | lane wear | road | rumble
   const offs = [-rumble, -half, -4.6, -2.8, -0.3, 0.3, 2.8, 4.6, half, rumble];
@@ -46,12 +46,15 @@ function buildRoad(track) {
   for (let i = 0; i < n; i++) {
     const s = (i / n) * track.length;
     const seg = Math.floor(s / 12) % 2;
+    // arcade-style curbs: short red/white stripes, independent of the
+    // centerline dash cycle
+    const rumbleSeg = Math.floor(s / 6) % 2;
     // subtle patchiness so the asphalt doesn't read as one flat sheet
     const shade = 0.95 + jitter(i) * 0.08;
     for (let j = 0; j < offs.length - 1; j++) {
       const isRumble = j === 0 || j === offs.length - 2;
       let c;
-      if (isRumble) c = seg ? RUMBLE_A : RUMBLE_B;
+      if (isRumble) c = rumbleSeg ? RUMBLE_A : RUMBLE_B;
       else if (j === CENTER_COL && seg) c = LINE;
       else {
         scratch.copy(ROADCOL).multiplyScalar(shade * (WEAR_COLS.has(j) ? 0.86 : 1));

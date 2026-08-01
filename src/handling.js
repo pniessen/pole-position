@@ -12,19 +12,19 @@ export const CARS = [
     name: 'E60 M5',
     desc: 'V10 sedan — top speed monster',
     spec: { ...CAR, maxSpeed: 82, accel: 27, steerSpeed: 15, offroadMax: 28 },
-    hood: { style: 'sedan', color: 0x8a9bab },
+    hood: { style: 'sedan', color: 0x23262e },
   },
   {
     name: 'E85 Z4 M',
     desc: 'Roadster — quickest hands',
     spec: { ...CAR, maxSpeed: 78, accel: 26, steerSpeed: 18.5, offroadMax: 28, eyeHeight: 1.0 },
-    hood: { style: 'roadster', color: 0xc41111 },
+    hood: { style: 'roadster', color: 0x1d2028 },
   },
   {
     name: 'E46 325xi Wagon',
     desc: 'AWD estate — unstoppable on grass',
     spec: { ...CAR, maxSpeed: 70, accel: 20, steerSpeed: 15, offroadMax: 45, offroadDecel: 25 },
-    hood: { style: 'wagon', color: 0x2d5a34 },
+    hood: { style: 'wagon', color: 0xb31414 },
   },
   {
     name: 'Classic F1',

@@ -7,6 +7,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 export const TRACKS = [
   {
     name: 'FUJI SPEEDWAY',
+    tagline: 'Fast, flowing classic beneath the snow-capped mountain',
     theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true, horizon: 0xcfe8ff, prop: 'pine' },
     points: [
       [0, 0, 0], [140, 0, 0], [280, 0, -10], [380, 0, -60],
@@ -18,6 +19,7 @@ export const TRACKS = [
   },
   {
     name: 'DESERT RUN',
+    tagline: 'Long straights and big sweepers through the dunes',
     theme: { sky: 0xf2a95c, grass: 0xd9b36c, mountain: 0x9c6248, snow: false, horizon: 0xffd9a8, prop: 'cactus', sunColor: 0xffc978, sunSize: 80 },
     points: [
       [0, 0, 0], [180, 0, 0], [360, 0, -20], [480, 0, -90],
@@ -30,6 +32,7 @@ export const TRACKS = [
   },
   {
     name: 'SEASIDE SPRINT',
+    tagline: 'Tight, twisty and unforgiving along the shore',
     theme: { sky: 0x6fd6ff, grass: 0x2fae7d, mountain: 0x5f7f9c, snow: false, horizon: 0xe0f6ff, prop: 'palm' },
     points: [
       [0, 0, 0], [120, 0, 0], [200, 0, -40], [220, 2, -120],
@@ -46,7 +49,20 @@ export function createTrack(index = 0) {
   const points = def.points.map(([x, y, z]) => new THREE.Vector3(x, y, z));
   const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
   const length = curve.getLength();
-  return { curve, length, checkpoints: [0, length / 2], name: def.name, theme: def.theme, index };
+  return { curve, length, checkpoints: [0, length / 2], name: def.name, tagline: def.tagline, theme: def.theme, index };
+}
+
+// number of distinct corners (hysteresis so wiggle inside one corner counts once)
+export function countTurns(track) {
+  const step = 5;
+  let count = 0;
+  let inTurn = false;
+  for (let s = 0; s < track.length; s += step) {
+    const k = Math.abs(curvatureAt(track, s));
+    if (!inTurn && k > 0.008) { inTurn = true; count++; }
+    else if (inTurn && k < 0.005) inTurn = false;
+  }
+  return count;
 }
 
 function wrap(track, s) {

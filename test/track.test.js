@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TRACKS, createTrack, posAt, tangentAt, curvatureAt, worldPose } from '../src/track.js';
+import { TRACKS, createTrack, posAt, tangentAt, curvatureAt, worldPose, countTurns } from '../src/track.js';
 
 describe('track roster', () => {
   it('has 3 tracks with unique names and themes', () => {
@@ -12,6 +12,15 @@ describe('track roster', () => {
       expect(t.theme.sky).toBeDefined();
       expect(t.theme.grass).toBeDefined();
       expect(t.theme.mountain).toBeDefined();
+    }
+  });
+
+  it('every track has a tagline and a sensible turn count', () => {
+    for (let i = 0; i < 3; i++) {
+      expect(typeof TRACKS[i].tagline).toBe('string');
+      const turns = countTurns(createTrack(i));
+      expect(turns).toBeGreaterThanOrEqual(4);
+      expect(turns).toBeLessThanOrEqual(30);
     }
   });
 

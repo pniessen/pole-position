@@ -69,9 +69,51 @@
 
 .screen .trackpick { color: #ffd21f; letter-spacing: 0.15em; }
 
-.screen .carpick { color: #6fd6ff; }
+.select-title { color: #6fd6ff; letter-spacing: 0.2em; }
 
-#car-desc { font-size: clamp(12px, 1.8vw, 18px); color: #cfd8e3; }
+.select-card {
+  background: rgba(10, 14, 30, 0.85);
+  border: 3px solid #ffd21f;
+  border-radius: 10px;
+  padding: 16px 22px;
+  width: min(460px, 88vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+}
+
+.select-card img {
+  width: 100%;
+  border-radius: 6px;
+  background: #272c38;
+}
+
+.select-name { font-size: clamp(22px, 4.5vw, 42px) !important; text-shadow: 3px 3px 0 #000 !important; }
+
+#select-desc { font-size: clamp(13px, 2vw, 19px); color: #cfd8e3; text-align: center; }
+
+#select-stats { width: 100%; display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+
+.stat-row { display: flex; align-items: center; gap: 10px; font-size: clamp(11px, 1.7vw, 16px); }
+
+.stat-label { width: 7.5em; text-align: right; color: #ffd21f; }
+
+.stat-bar {
+  flex: 1;
+  height: 0.85em;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.stat-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #35ff6a, #ffd21f);
+}
+
+.stat-value { color: #fff; white-space: nowrap; }
 
 .screen table {
   border-collapse: collapse;
