@@ -69,6 +69,10 @@
 
 .screen .trackpick { color: #ffd21f; letter-spacing: 0.15em; }
 
+.screen .carpick { color: #6fd6ff; }
+
+#car-desc { font-size: clamp(12px, 1.8vw, 18px); color: #cfd8e3; }
+
 .screen table {
   border-collapse: collapse;
   font-size: clamp(14px, 2.2vw, 24px);

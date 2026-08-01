@@ -25,8 +25,10 @@ export function createHud() {
       <h1>POLE POSITION</h1>
       <h2>First-person arcade racer</h2>
       <h2 class="trackpick">&#9664; <span id="track-name"></span> &#9654;</h2>
+      <h2 class="trackpick carpick">&#9650; <span id="car-name"></span> &#9660;</h2>
+      <div id="car-desc"></div>
       <div id="attract-scores"></div>
-      <h2 class="blink">&#9664; &#9654; choose track &middot; any other key to race</h2>
+      <h2 class="blink">&#9664;&#9654; track &middot; &#9650;&#9660; car &middot; Enter to race</h2>
     </div>
     <div class="screen hidden" id="initials">
       <h2>High score! Enter your initials</h2>
@@ -47,6 +49,7 @@ export function createHud() {
     score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'),
     countdown: $('countdown'), banner: $('banner'), crashflash: $('crashflash'),
     attract: $('attract'), attractScores: $('attract-scores'), trackName: $('track-name'),
+    carName: $('car-name'), carDesc: $('car-desc'),
     initials: $('initials'), entry: $('entry'),
     gameover: $('gameover'), gameoverTitle: $('gameover-title'),
     finalScore: $('final-score'), gameoverScores: $('gameover-scores'),
@@ -150,10 +153,12 @@ export function updateHud(hud, race, car, dt) {
   hud.wasCrashed = crashed;
 }
 
-export function showAttract(hud, scores, trackName = '') {
+export function showAttract(hud, scores, trackName = '', carName = '', carDesc = '') {
   hud.attract.classList.remove('hidden');
   hud.attractScores.innerHTML = scoreTable(scores);
   hud.trackName.textContent = trackName;
+  hud.carName.textContent = carName;
+  hud.carDesc.textContent = carDesc;
   hud.gameover.classList.add('hidden');
   hud.initials.classList.add('hidden');
 }

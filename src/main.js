@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt, posAt, TRACKS } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CAR } from './handling.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CARS } from './handling.js';
 import { createRace, startRace, updateRace } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
-import { buildScene } from './scene.js';
+import { buildScene, makeHood } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
 import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
@@ -14,7 +14,10 @@ document.body.appendChild(renderer.domElement);
 
 let trackIndex = 0;
 let track = createTrack(trackIndex);
-let { scene, updateRivals, hood } = buildScene(track);
+let { scene, updateRivals } = buildScene(track);
+let carIndex = 0;
+let carDef = CARS[carIndex];
+let hood = makeHood(carDef.hood);
 const camera = createCamera();
 camera.add(hood);
 scene.add(camera);
@@ -30,18 +33,29 @@ function disposeScene(oldScene) {
 function setTrack(index) {
   trackIndex = ((index % TRACKS.length) + TRACKS.length) % TRACKS.length;
   scene.remove(camera);
-  camera.remove(hood);
   disposeScene(scene);
-  disposeScene(hood);
   track = createTrack(trackIndex);
-  ({ scene, updateRivals, hood } = buildScene(track));
-  camera.add(hood);
+  ({ scene, updateRivals } = buildScene(track));
   scene.add(camera);
   car = createCarState();
   traffic = createTraffic(track.length);
   race = createRace(track.length, track.checkpoints);
   refreshMinimap();
-  showAttract(hud, scores, track.name);
+  showMenu();
+}
+
+function setCar(index) {
+  carIndex = ((index % CARS.length) + CARS.length) % CARS.length;
+  carDef = CARS[carIndex];
+  camera.remove(hood);
+  disposeScene(hood);
+  hood = makeHood(carDef.hood);
+  camera.add(hood);
+  showMenu();
+}
+
+function showMenu() {
+  showAttract(hud, scores, track.name, carDef.name, carDef.desc);
 }
 
 function refreshMinimap() {
@@ -71,7 +85,7 @@ const hud = createHud();
 let scores = loadScores();
 let enteringInitials = false;
 refreshMinimap();
-showAttract(hud, scores, track.name);
+showMenu();
 
 const audio = createAudio();
 
@@ -90,8 +104,9 @@ addEventListener('keydown', (e) => {
   if (race.phase === 'attract') {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') { setTrack(trackIndex - 1); return; }
     if (e.code === 'ArrowRight' || e.code === 'KeyD') { setTrack(trackIndex + 1); return; }
-    keys.add(e.code);
-    startFromMenu();
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') { setCar(carIndex - 1); return; }
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') { setCar(carIndex + 1); return; }
+    if (e.code === 'Enter' || e.code === 'Space') startFromMenu();
     return;
   }
   keys.add(e.code);
@@ -101,7 +116,7 @@ addEventListener('keydown', (e) => {
     car = createCarState();
     traffic = createTraffic(track.length);
     race = createRace(track.length, track.checkpoints);
-    showAttract(hud, scores, track.name);
+    showMenu();
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -139,7 +154,7 @@ function update(dt) {
   if (race.phase === 'racing' || race.phase === 'countdown') {
     const prevS = car.s;
     if (race.phase === 'racing') {
-      car = stepCar(car, input, curvatureAt(track, car.s), track.length, dt);
+      car = stepCar(car, input, curvatureAt(track, car.s), track.length, dt, carDef.spec);
       updateTraffic(traffic, dt, car.s, track.length);
       if (!isCrashed(car)) {
         const hit = findCollision(car, traffic, track.length);
@@ -157,11 +172,11 @@ function update(dt) {
     }
   }
   updateRivals(traffic);
-  updateCamera(camera, track, car, dt, input.steer);
+  updateCamera(camera, track, car, dt, input.steer, carDef.spec);
   updateHud(hud, race, car, dt);
   updateMinimap(hud, posAt(track, car.s), traffic.map((c) => posAt(track, c.s)));
-  updateEngine(audio, car.speed, CAR.maxSpeed);
-  setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * CAR.maxSpeed) || (isOffroad(car) && car.speed > 5));
+  updateEngine(audio, car.speed, carDef.spec.maxSpeed);
+  setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
 
 const DT = 1 / 60;
@@ -186,6 +201,8 @@ window.__game = {
   crash: () => { car = crashCar(car); playCrash(audio); },
   setTrack: (i) => setTrack(i),
   trackName: () => track.name,
+  setCar: (i) => setCar(i),
+  carName: () => carDef.name,
   step: (seconds) => {
     const n = Math.round(seconds / DT);
     for (let i = 0; i < n; i++) update(DT);

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { worldPose, curvatureAt } from './track.js';
 import { CAR, isCrashed, isOffroad } from './handling.js';
 
-const EYE_HEIGHT = 1.15;
 const LOOK_AHEAD = 14;
 const BASE_FOV = 68;
 const FOV_BOOST = 16;
@@ -13,13 +12,13 @@ export function createCamera() {
 
 const _look = new THREE.Vector3();
 
-export function updateCamera(camera, track, car, dt, steer = 0) {
+export function updateCamera(camera, track, car, dt, steer = 0, spec = CAR) {
   const pose = worldPose(track, car.s, car.x);
   const eye = pose.position;
-  eye.y += EYE_HEIGHT;
+  eye.y += spec.eyeHeight;
 
   // shake when offroad or near top speed
-  const speedFrac = car.speed / CAR.maxSpeed;
+  const speedFrac = car.speed / spec.maxSpeed;
   if (isOffroad(car) && car.speed > 1) {
     eye.y += (Math.random() - 0.5) * 0.09;
     eye.x += (Math.random() - 0.5) * 0.05;

@@ -191,24 +191,62 @@ export function makeRivalCar(colorIndex) {
   return group;
 }
 
-export function makeHood() {
-  const hood = new THREE.Group();
-  // red wedge sloping away from the camera
+function hoodWedge(color, nearW, farW, depth, drop) {
   const geo = new THREE.BufferGeometry();
-  const nearW = 1.35, farW = 0.85, depth = 1.5, drop = 0.22;
   const verts = new Float32Array([
     -nearW, 0, 0,    nearW, 0, 0,    farW, -drop, -depth,
     -nearW, 0, 0,    farW, -drop, -depth,    -farW, -drop, -depth,
   ]);
   geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
   geo.computeVertexNormals();
-  const wedge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xc41111, side: THREE.DoubleSide }));
-  const dash = new THREE.Mesh(
-    new THREE.BoxGeometry(2.7, 0.1, 0.4),
-    new THREE.MeshBasicMaterial({ color: 0x17181c })
-  );
+  return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+}
+
+export function makeHood(def = { style: 'sedan', color: 0xc41111 }) {
+  const hood = new THREE.Group();
+  const dark = new THREE.MeshBasicMaterial({ color: 0x17181c });
+
+  if (def.style === 'open-wheel') {
+    // narrow nose cone, front wing, exposed front wheels — no dashboard
+    const nose = hoodWedge(def.color, 0.5, 0.22, 2.0, 0.3);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.06, 0.35), new THREE.MeshBasicMaterial({ color: def.color }));
+    wing.position.set(0, -0.34, -2.1);
+    const wingTipL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.35), dark);
+    wingTipL.position.set(-0.95, -0.28, -2.1);
+    const wingTipR = wingTipL.clone();
+    wingTipR.position.x = 0.95;
+    const wheelGeo = new THREE.BoxGeometry(0.4, 0.5, 0.8);
+    const wheelL = new THREE.Mesh(wheelGeo, dark);
+    wheelL.position.set(-1.05, -0.22, -1.7);
+    const wheelR = wheelL.clone();
+    wheelR.position.x = 0.95;
+    hood.add(nose, wing, wingTipL, wingTipR, wheelL, wheelR);
+    hood.position.set(0, -0.5, -0.9);
+    return hood;
+  }
+
+  const depth = def.style === 'roadster' ? 1.9 : 1.5;
+  const wedge = hoodWedge(def.color, 1.35, 0.85, depth, 0.22);
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.1, 0.4), dark);
   dash.position.set(0, -0.03, 0.25);
   hood.add(wedge, dash);
+  if (def.style === 'sedan') {
+    // subtle power bulge
+    const bulge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.55, 0.05, 1.0),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(def.color).offsetHSL(0, 0, -0.06) })
+    );
+    bulge.position.set(0, -0.08, -0.7);
+    hood.add(bulge);
+  }
+  if (def.style === 'wagon') {
+    // roof rail shadows at the view edges (subtle wagon-ness)
+    const railL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.9), dark);
+    railL.position.set(-1.3, -0.05, 0.1);
+    const railR = railL.clone();
+    railR.position.x = 1.3;
+    hood.add(railL, railR);
+  }
   hood.position.set(0, -0.62, -1.1);
   return hood;
 }
@@ -286,5 +324,5 @@ export function buildScene(track) {
     }
   }
 
-  return { scene, rivalMeshes, updateRivals, hood: makeHood() };
+  return { scene, rivalMeshes, updateRivals };
 }

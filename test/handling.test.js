@@ -1,8 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { CAR, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad } from '../src/handling.js';
+import { CAR, CARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad } from '../src/handling.js';
 
 const IDLE = { throttle: 0, brake: 0, steer: 0 };
 const GAS = { throttle: 1, brake: 0, steer: 0 };
+
+describe('car roster', () => {
+  it('has 4 cars with unique names and complete specs', () => {
+    expect(CARS.length).toBe(4);
+    expect(new Set(CARS.map(c => c.name)).size).toBe(4);
+    for (const c of CARS) {
+      for (const key of ['maxSpeed', 'accel', 'steerSpeed', 'offroadMax', 'eyeHeight']) {
+        expect(c.spec[key], `${c.name}.${key}`).toBeGreaterThan(0);
+      }
+      expect(c.hood).toBeTruthy();
+    }
+  });
+
+  it('stepCar honors a per-car spec: F1 tops out above the base car', () => {
+    const f1 = CARS.find(c => c.name.includes('F1')).spec;
+    let car = createCarState();
+    for (let i = 0; i < 100; i++) car = stepCar(car, GAS, 0, 100000, 1, f1);
+    expect(car.speed).toBe(f1.maxSpeed);
+    expect(f1.maxSpeed).toBeGreaterThan(CAR.maxSpeed);
+  });
+
+  it('stepCar honors offroadMax: AWD wagon keeps more speed on grass', () => {
+    const wagon = CARS.find(c => c.name.includes('325xi')).spec;
+    let a = { ...createCarState(), x: ROAD_HALF_WIDTH + 2, speed: wagon.maxSpeed };
+    for (let i = 0; i < 10; i++) a = stepCar(a, GAS, 0, 100000, 1, wagon);
+    expect(a.speed).toBe(wagon.offroadMax);
+    expect(wagon.offroadMax).toBeGreaterThan(CAR.offroadMax);
+  });
+});
 
 describe('stepCar', () => {
   it('accelerates under throttle up to maxSpeed', () => {
