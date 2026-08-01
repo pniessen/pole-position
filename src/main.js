@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed } from './handling.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CAR } from './handling.js';
 import { createRace, startRace, updateRace } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
 import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry } from './hud.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
+import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -35,6 +36,8 @@ let scores = loadScores();
 let enteringInitials = false;
 showAttract(hud, scores);
 
+const audio = createAudio();
+
 const input = { throttle: 0, brake: 0, steer: 0 };
 const keys = new Set();
 function readInput() {
@@ -45,6 +48,7 @@ function readInput() {
 }
 
 addEventListener('keydown', (e) => {
+  unlock(audio);
   if (enteringInitials) return;
   keys.add(e.code);
   if (race.phase === 'attract') {
@@ -58,6 +62,7 @@ addEventListener('keyup', (e) => keys.delete(e.code));
 function startFromMenu() {
   hideScreens(hud);
   race = startRace(race);
+  startMusic(audio);
 }
 
 function resetGame() {
@@ -65,6 +70,7 @@ function resetGame() {
   traffic = createTraffic(track.length);
   hideScreens(hud);
   race = startRace(createRace(track.length, track.checkpoints));
+  startMusic(audio);
 }
 
 function onRaceEnded() {
@@ -90,15 +96,24 @@ function update(dt) {
       updateTraffic(traffic, dt, car.s, track.length);
       if (!isCrashed(car)) {
         const hit = findCollision(car, traffic, track.length);
-        if (hit) car = crashCar(car);
+        if (hit) {
+          car = crashCar(car);
+          playCrash(audio);
+        }
       }
     }
     race = updateRace(race, dt, prevS, car.s, car.speed);
-    if (race.phase === 'gameover' || race.phase === 'finished') onRaceEnded();
+    if (race.justCheckpoint || race.justLap) playJingle(audio);
+    if (race.phase === 'gameover' || race.phase === 'finished') {
+      stopMusic(audio);
+      onRaceEnded();
+    }
   }
   updateRivals(traffic);
   updateCamera(camera, track, car, dt, input.steer);
   updateHud(hud, race, car, dt);
+  updateEngine(audio, car.speed, CAR.maxSpeed);
+  setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * CAR.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
 
 const DT = 1 / 60;
