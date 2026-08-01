@@ -306,6 +306,213 @@ function makePalm() {
 
 const PROP_BUILDERS = { pine: makePine, cactus: makeCactus, palm: makePalm };
 
+// --- per-track surroundings ---
+
+function makeMountain(x, z, radius, height, color, snowCap = false, rounded = false) {
+  // fog: false — backdrop shapes beyond the fog act as a flat horizon.
+  const group = new THREE.Group();
+  const geo = rounded
+    ? new THREE.SphereGeometry(radius, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2)
+    : new THREE.ConeGeometry(radius, height, 7);
+  const shape = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, fog: false }));
+  if (rounded) shape.scale.y = height / radius;
+  else shape.position.y = height / 2;
+  group.add(shape);
+  if (snowCap && !rounded) {
+    const cap = new THREE.Mesh(
+      new THREE.ConeGeometry(radius * 0.35, height * 0.32, 7),
+      new THREE.MeshBasicMaterial({ color: 0xf4f7fa, fog: false })
+    );
+    cap.position.y = height - (height * 0.32) / 2 + 0.5;
+    group.add(cap);
+  }
+  group.position.set(x, 0, z);
+  return group;
+}
+
+const BACKDROP_SPOTS = [
+  [900, -1200, 350, 260], [400, -1500, 260, 140], [-800, -1000, 300, 150],
+  [1200, -300, 280, 120], [-900, 300, 320, 170], [300, 900, 300, 130],
+];
+
+function backdropRing(theme, { rounded = false, heightScale = 1, first = {} } = {}) {
+  const group = new THREE.Group();
+  const base = new THREE.Color(theme.mountain);
+  const shades = [
+    theme.mountain,
+    base.clone().offsetHSL(0, 0, 0.05).getHex(),
+    base.clone().offsetHSL(0, 0, -0.05).getHex(),
+  ];
+  BACKDROP_SPOTS.forEach(([x, z, r, h], i) => {
+    group.add(makeMountain(x, z, r, h * heightScale, shades[i % 3],
+      i === 0 && (first.snow ?? theme.snow), rounded));
+  });
+  return group;
+}
+
+function makeTreeRing(track, type, count, minOff, maxOff) {
+  const group = new THREE.Group();
+  const build = PROP_BUILDERS[type] ?? makePine;
+  for (let i = 0; i < count; i++) {
+    const s = (i / count) * track.length;
+    if (s < 100 || s > track.length - 100) continue;
+    const side = (i % 2 ? 1 : -1) * (minOff + hash(i + 500) * (maxOff - minOff));
+    const prop = build();
+    const { position } = worldPose(track, s, side);
+    prop.position.copy(position);
+    prop.position.y = 0;
+    prop.rotation.y = hash(i + 520) * Math.PI * 2;
+    const sc = 1.1 + hash(i + 540) * 1.1;
+    prop.scale.set(sc, sc, sc);
+    group.add(prop);
+  }
+  return group;
+}
+
+function windowTexture(seed) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#3c4250';
+  ctx.fillRect(0, 0, 64, 128);
+  for (let r = 2; r < 30; r++) {
+    for (let c = 1; c < 7; c++) {
+      ctx.fillStyle = hash(seed + r * 7 + c) > 0.45 ? '#ffe9a8' : '#232833';
+      ctx.fillRect(c * 9, r * 4, 6, 2.6);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeBuildings(track) {
+  const group = new THREE.Group();
+  const facadeColors = [0xd8cfc0, 0xc9b8a8, 0xbfc4cf, 0xd4c4ae, 0xb8aa9a];
+  const step = 34;
+  let i = 0;
+  for (let s = 100; s < track.length - 100; s += step) {
+    for (const side of [-1, 1]) {
+      i++;
+      if (hash(i * 3.1) < 0.25) continue; // gaps between blocks
+      const offset = side * (ROAD_HALF_WIDTH + 14 + hash(i) * 22);
+      const w = 16 + hash(i + 1) * 14;
+      const h = 14 + hash(i + 2) * 26;
+      const d = 12 + hash(i + 3) * 10;
+      const mats = [];
+      const facade = new THREE.MeshLambertMaterial({ color: facadeColors[i % facadeColors.length] });
+      const windows = new THREE.MeshBasicMaterial({ map: windowTexture(i) });
+      // window the two long faces, plain the rest
+      for (let f = 0; f < 6; f++) mats.push(f === 4 || f === 5 ? windows : facade);
+      const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats);
+      const { position, tangent } = worldPose(track, s, offset);
+      box.position.copy(position);
+      box.position.y = h / 2 - 0.2; // grounded on the flat terrain, not the road slope
+      box.lookAt(position.clone().add(new THREE.Vector3(tangent.x, 0, tangent.z)));
+      group.add(box);
+    }
+  }
+  return group;
+}
+
+function makeWater(track) {
+  // a broad sea disc placed beyond the track's eastern extent
+  let maxX = -Infinity, cz = 0, n = 60;
+  for (let i = 0; i < n; i++) {
+    const p = posAt(track, (i / n) * track.length);
+    maxX = Math.max(maxX, p.x);
+    cz += p.z / n;
+  }
+  const water = new THREE.Mesh(
+    new THREE.CircleGeometry(650, 48),
+    new THREE.MeshBasicMaterial({ color: 0x2a7fc9 })
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(maxX + 690, -0.05, cz);
+  return water;
+}
+
+function makeStadiumRing(track) {
+  const group = new THREE.Group();
+  const offset = ROAD_HALF_WIDTH + 2 + 9;
+  let seed = 40;
+  for (let s = 90; s < track.length - 90; s += 130) {
+    for (const side of [-1, 1]) {
+      if (hash(seed * 1.7) < 0.2) { seed++; continue; }
+      const unit = makeStandUnit(seed++);
+      const { position } = worldPose(track, s, side * offset);
+      unit.position.copy(position);
+      const roadPoint = worldPose(track, s, 0).position;
+      roadPoint.y = position.y;
+      unit.lookAt(roadPoint);
+      group.add(unit);
+    }
+  }
+  return group;
+}
+
+function makeObservationTower(track) {
+  const tower = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.2, 3.2, 58, 10),
+    new THREE.MeshLambertMaterial({ color: 0xe8e8ee })
+  );
+  shaft.position.y = 29;
+  const pod = new THREE.Mesh(
+    new THREE.CylinderGeometry(7, 5.5, 6, 10),
+    new THREE.MeshLambertMaterial({ color: 0xd42020 })
+  );
+  pod.position.y = 58;
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(7.4, 7.4, 1, 10),
+    new THREE.MeshLambertMaterial({ color: 0xf0f0f4 })
+  );
+  cap.position.y = 61.5;
+  tower.add(shaft, pod, cap);
+  const { position } = worldPose(track, 170, 40);
+  tower.position.copy(position);
+  return tower;
+}
+
+// Composes the world beyond the rumble strips to match the track's character.
+export function makeEnvironment(track, theme) {
+  const group = new THREE.Group();
+  switch (theme.environment) {
+    case 'forest':
+      group.add(backdropRing(theme, { rounded: true, heightScale: 0.7 }));
+      group.add(makeTreeRing(track, theme.prop, 110, 18, 85));
+      break;
+    case 'park':
+      group.add(backdropRing(theme, { rounded: true, heightScale: 0.45 }));
+      group.add(makeTreeRing(track, theme.prop, 48, 20, 70));
+      break;
+    case 'urban':
+      group.add(makeBuildings(track));
+      group.add(makeWater(track));
+      break;
+    case 'stadium':
+      group.add(makeStadiumRing(track));
+      group.add(backdropRing(theme, { rounded: true, heightScale: 0.35 }));
+      break;
+    case 'hills':
+      group.add(backdropRing(theme, { rounded: true, heightScale: 0.55 }));
+      group.add(makeTreeRing(track, theme.prop, 26, 25, 80));
+      break;
+    case 'plains':
+      group.add(backdropRing(theme, { rounded: true, heightScale: 0.3 }));
+      group.add(makeObservationTower(track));
+      break;
+    case 'coast':
+      group.add(makeWater(track));
+      group.add(backdropRing(theme));
+      break;
+    default: // 'mountains'
+      group.add(backdropRing(theme));
+  }
+  return group;
+}
+
 export function makeProps(track, theme) {
   const group = new THREE.Group();
   const build = PROP_BUILDERS[theme.prop] ?? makePine;
@@ -318,6 +525,7 @@ export function makeProps(track, theme) {
     const prop = build();
     const { position } = worldPose(track, s, side);
     prop.position.copy(position);
+    prop.position.y = 0;
     prop.rotation.y = hash(i + 20) * Math.PI * 2;
     const sc = 0.9 + hash(i + 50) * 0.7;
     prop.scale.set(sc, sc, sc);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt, posAt, countTurns, TRACKS } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CARS } from './handling.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, CARS, GEARS } from './handling.js';
 import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
@@ -167,6 +167,9 @@ addEventListener('keydown', (e) => {
     return;
   }
   keys.add(e.code);
+  if (race.phase === 'racing' && /^Digit[1-4]$/.test(e.code)) {
+    car = shiftGear(car, Number(e.code.slice(5)));
+  }
   if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Enter') {
     resetGame();
   } else if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Escape') {
@@ -234,7 +237,8 @@ function update(dt) {
   updateCamera(camera, track, car, dt, input.steer, carDef.spec);
   updateHud(hud, race, car, dt);
   updateMinimap(hud, posAt(track, car.s), traffic.map((c) => posAt(track, c.s)));
-  updateEngine(audio, car.speed, carDef.spec.maxSpeed);
+  // engine revs climb within the current gear and drop on upshift
+  updateEngine(audio, car.speed / GEARS[car.gear - 1].cap, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);
   updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);
   setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
@@ -262,9 +266,9 @@ window.__game = {
   press: (code) => { if (race.phase === 'attract') menuKey(code); else keys.add(code); },
   release: (code) => keys.delete(code),
   crash: () => { car = crashCar(car); playCrash(audio); },
-  setTrack: (i) => setTrack(i),
+  setTrack: (i) => { setTrack(i); openTrackSelect(); },
   trackName: () => track.name,
-  setCar: (i) => setCar(i),
+  setCar: (i) => { setCar(i); openCarSelect(); },
   carName: () => carDef.name,
   step: (seconds) => {
     const n = Math.round(seconds / DT);

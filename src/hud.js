@@ -15,6 +15,7 @@ export function createHud() {
       <div><span class="label">Score</span><span id="score">000000</span></div>
       <div><span class="label">Time</span><span id="time">75</span></div>
       <div><span class="label">Lap</span><span id="lap">1/${RACE.totalLaps}</span></div>
+      <div><span class="label">Gear</span><span id="gear">1</span></div>
       <div><span class="label">Speed</span><span id="speed">0</span> km/h</div>
     </div>
     <div class="center hidden" id="countdown"></div>
@@ -53,7 +54,7 @@ export function createHud() {
   const $ = (id) => root.querySelector('#' + id);
   return {
     root,
-    score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'),
+    score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'), gear: $('gear'),
     countdown: $('countdown'), banner: $('banner'), crashflash: $('crashflash'),
     attract: $('attract'), attractScores: $('attract-scores'),
     select: $('select'), selectTitle: $('select-title'), selectImage: $('select-image'),
@@ -137,6 +138,7 @@ export function updateHud(hud, race, car, dt) {
   hud.time.classList.toggle('low', race.phase === 'racing' && t <= 10);
   hud.lap.textContent = `${race.lap}/${RACE.totalLaps}`;
   hud.speed.textContent = String(Math.round(car.speed * 3.6));
+  hud.gear.textContent = String(car.gear ?? 1);
 
   if (race.phase === 'countdown') {
     hud.countdown.classList.remove('hidden');

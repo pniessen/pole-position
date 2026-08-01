@@ -32,10 +32,29 @@ export const CARS = [
     spec: { ...CAR, maxSpeed: 88, accel: 32, steerSpeed: 17, offroadMax: 20, offroadDecel: 60, eyeHeight: 0.85 },
     hood: { style: 'open-wheel', color: 0xf2f2f2 },
   },
+  {
+    name: 'Lotus Elise',
+    desc: 'Featherweight roadster — corners on rails',
+    spec: { ...CAR, maxSpeed: 76, accel: 29, steerSpeed: 19.5, offroadMax: 26, eyeHeight: 0.95 },
+    hood: { style: 'roadster', color: 0xc9ccd4 },
+  },
 ];
 
+// 4-speed gearbox: each gear caps speed at a fraction of the car's top speed
+// and multiplies acceleration — low gears launch hard, 4th reaches the max.
+export const GEARS = [
+  { cap: 0.35, accelMul: 1.7 },
+  { cap: 0.58, accelMul: 1.35 },
+  { cap: 0.8, accelMul: 1.1 },
+  { cap: 1.0, accelMul: 0.9 },
+];
+
+export function shiftGear(car, gear) {
+  return { ...car, gear: Math.max(1, Math.min(GEARS.length, gear)) };
+}
+
 export function createCarState() {
-  return { s: 0, x: 0, speed: 0, crashTimer: 0 };
+  return { s: 0, x: 0, speed: 0, crashTimer: 0, gear: 1 };
 }
 
 export function isCrashed(car) { return car.crashTimer > 0; }
@@ -51,10 +70,16 @@ export function stepCar(car, input, curvature, trackLength, dt, spec = CAR) {
     next.crashTimer = Math.max(0, next.crashTimer - dt);
     return next;
   }
-  // longitudinal
+  // longitudinal — gear sets the speed ceiling and acceleration strength
+  const gear = GEARS[(next.gear ?? GEARS.length) - 1];
+  const gearCap = spec.maxSpeed * gear.cap;
   if (input.brake) next.speed -= spec.brakeDecel * dt;
-  else if (input.throttle) next.speed += spec.accel * dt;
-  else next.speed -= spec.coastDecel * dt;
+  else if (input.throttle && next.speed < gearCap) next.speed += spec.accel * gear.accelMul * dt;
+  else if (!input.throttle) next.speed -= spec.coastDecel * dt;
+  if (next.speed > gearCap) {
+    // over the rev limit (downshift or cap) — engine braking pulls it back
+    next.speed = Math.max(gearCap, next.speed - spec.coastDecel * 2 * dt);
+  }
   if (isOffroad(next) && next.speed > spec.offroadMax) {
     next.speed = Math.max(spec.offroadMax, car.speed - spec.offroadDecel * dt);
   }

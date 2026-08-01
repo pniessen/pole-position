@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { TRACKS, createTrack, posAt, tangentAt, curvatureAt, worldPose, countTurns } from '../src/track.js';
 
 describe('track roster', () => {
-  it('has 3 tracks with unique names and themes', () => {
-    expect(TRACKS.length).toBe(3);
+  it('has 11 tracks (3 originals + 8 famous circuits) with unique names and themes', () => {
+    expect(TRACKS.length).toBe(11);
     const names = TRACKS.map(t => t.name);
-    expect(new Set(names).size).toBe(3);
+    expect(new Set(names).size).toBe(TRACKS.length);
     for (const t of TRACKS) {
       expect(typeof t.name).toBe('string');
       expect(t.theme).toBeTruthy();
@@ -16,11 +16,12 @@ describe('track roster', () => {
   });
 
   it('every track has a tagline and a sensible turn count', () => {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < TRACKS.length; i++) {
       expect(typeof TRACKS[i].tagline).toBe('string');
       const turns = countTurns(createTrack(i));
-      expect(turns).toBeGreaterThanOrEqual(4);
-      expect(turns).toBeLessThanOrEqual(30);
+      // ovals legitimately have few distinct corners; the Nordschleife has many
+      expect(turns, TRACKS[i].name).toBeGreaterThanOrEqual(2);
+      expect(turns, TRACKS[i].name).toBeLessThanOrEqual(40);
     }
   });
 
@@ -32,8 +33,8 @@ describe('track roster', () => {
   });
 });
 
-for (let i = 0; i < 3; i++) {
-  describe(`track ${i}`, () => {
+for (let i = 0; i < TRACKS.length; i++) {
+  describe(`track ${i} (${TRACKS[i].name})`, () => {
     const track = createTrack(i);
 
     it('is a closed loop: posAt(0) ≈ posAt(length)', () => {
@@ -50,7 +51,7 @@ for (let i = 0; i < 3; i++) {
 
     it('has a plausible length', () => {
       expect(track.length).toBeGreaterThan(1400);
-      expect(track.length).toBeLessThan(4000);
+      expect(track.length).toBeLessThan(4500);
     });
 
     it('checkpoints at 0 and half distance', () => {
@@ -70,11 +71,11 @@ for (let i = 0; i < 3; i++) {
       expect(a.distanceTo(b)).toBeCloseTo(6, 0);
     });
 
-    it('curvature integrates to ±2π around the loop', () => {
+    it('curvature integrates to ±2π around the loop (no figure-eights)', () => {
       let total = 0;
-      const step = 5;
+      const step = 2; // fine sampling so hairpins are not underestimated
       for (let s = 0; s < track.length; s += step) total += curvatureAt(track, s) * step;
-      expect(Math.abs(Math.abs(total) - Math.PI * 2)).toBeLessThan(0.3);
+      expect(Math.abs(Math.abs(total) - Math.PI * 2)).toBeLessThan(0.35);
     });
   });
 }

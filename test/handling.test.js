@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { CAR, CARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad } from '../src/handling.js';
+import { CAR, CARS, GEARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear } from '../src/handling.js';
 
 const IDLE = { throttle: 0, brake: 0, steer: 0 };
 const GAS = { throttle: 1, brake: 0, steer: 0 };
 
 describe('car roster', () => {
-  it('has 4 cars with unique names and complete specs', () => {
-    expect(CARS.length).toBe(4);
-    expect(new Set(CARS.map(c => c.name)).size).toBe(4);
+  it('has 5 cars with unique names and complete specs', () => {
+    expect(CARS.length).toBe(5);
+    expect(new Set(CARS.map(c => c.name)).size).toBe(5);
     for (const c of CARS) {
       for (const key of ['maxSpeed', 'accel', 'steerSpeed', 'offroadMax', 'eyeHeight']) {
         expect(c.spec[key], `${c.name}.${key}`).toBeGreaterThan(0);
@@ -18,7 +18,7 @@ describe('car roster', () => {
 
   it('stepCar honors a per-car spec: F1 tops out above the base car', () => {
     const f1 = CARS.find(c => c.name.includes('F1')).spec;
-    let car = createCarState();
+    let car = { ...createCarState(), gear: 4 };
     for (let i = 0; i < 100; i++) car = stepCar(car, GAS, 0, 100000, 1, f1);
     expect(car.speed).toBe(f1.maxSpeed);
     expect(f1.maxSpeed).toBeGreaterThan(CAR.maxSpeed);
@@ -26,7 +26,7 @@ describe('car roster', () => {
 
   it('stepCar honors offroadMax: AWD wagon keeps more speed on grass', () => {
     const wagon = CARS.find(c => c.name.includes('325xi')).spec;
-    let a = { ...createCarState(), x: ROAD_HALF_WIDTH + 2, speed: wagon.maxSpeed };
+    let a = { ...createCarState(), gear: 4, x: ROAD_HALF_WIDTH + 2, speed: wagon.maxSpeed };
     for (let i = 0; i < 10; i++) a = stepCar(a, GAS, 0, 100000, 1, wagon);
     expect(a.speed).toBe(wagon.offroadMax);
     expect(wagon.offroadMax).toBeGreaterThan(CAR.offroadMax);
@@ -34,10 +34,10 @@ describe('car roster', () => {
 });
 
 describe('stepCar', () => {
-  it('accelerates under throttle up to maxSpeed', () => {
-    let car = createCarState();
+  it('accelerates under throttle up to maxSpeed in top gear', () => {
+    let car = { ...createCarState(), gear: 4 };
     car = stepCar(car, GAS, 0, 10000, 1);
-    expect(car.speed).toBeCloseTo(CAR.accel);
+    expect(car.speed).toBeCloseTo(CAR.accel * 0.9); // 4th gear accel multiplier
     for (let i = 0; i < 100; i++) car = stepCar(car, GAS, 0, 10000, 1);
     expect(car.speed).toBe(CAR.maxSpeed);
   });
@@ -86,9 +86,53 @@ describe('stepCar', () => {
   });
 
   it('offroad does not slow below offroadMax', () => {
-    let car = { ...createCarState(), x: ROAD_HALF_WIDTH + 2, speed: CAR.offroadMax + 5 };
+    let car = { ...createCarState(), gear: 4, x: ROAD_HALF_WIDTH + 2, speed: CAR.offroadMax + 5 };
     car = stepCar(car, GAS, 0, 10000, 1);
     expect(car.speed).toBe(CAR.offroadMax);
+  });
+
+  it('gearbox: 4 gears with rising speed caps up to 100%', () => {
+    expect(GEARS.length).toBe(4);
+    for (let i = 1; i < 4; i++) expect(GEARS[i].cap).toBeGreaterThan(GEARS[i - 1].cap);
+    expect(GEARS[3].cap).toBe(1);
+  });
+
+  it('cars start in 1st and shiftGear clamps to 1..4', () => {
+    const car = createCarState();
+    expect(car.gear).toBe(1);
+    expect(shiftGear(car, 3).gear).toBe(3);
+    expect(shiftGear(car, 0).gear).toBe(1);
+    expect(shiftGear(car, 9).gear).toBe(4);
+  });
+
+  it('each gear caps speed at its fraction of maxSpeed', () => {
+    let car = { ...createCarState(), gear: 1 };
+    for (let i = 0; i < 60; i++) car = stepCar(car, GAS, 0, 100000, 1);
+    expect(car.speed).toBeCloseTo(CAR.maxSpeed * GEARS[0].cap);
+    car = shiftGear(car, 4);
+    for (let i = 0; i < 60; i++) car = stepCar(car, GAS, 0, 100000, 1);
+    expect(car.speed).toBe(CAR.maxSpeed);
+  });
+
+  it('low gears accelerate harder from a standstill', () => {
+    const first = stepCar({ ...createCarState(), gear: 1 }, GAS, 0, 100000, 0.5);
+    const fourth = stepCar({ ...createCarState(), gear: 4 }, GAS, 0, 100000, 0.5);
+    expect(first.speed).toBeGreaterThan(fourth.speed);
+  });
+
+  it('downshifting at speed drags the car back to the gear cap', () => {
+    let car = { ...createCarState(), gear: 4, speed: CAR.maxSpeed };
+    car = shiftGear(car, 2);
+    for (let i = 0; i < 60; i++) car = stepCar(car, GAS, 0, 100000, 1);
+    expect(car.speed).toBeCloseTo(CAR.maxSpeed * GEARS[1].cap);
+  });
+
+  it('Lotus Elise has the best handling in the roster', () => {
+    const elise = CARS.find(c => c.name.includes('Elise'));
+    expect(elise).toBeTruthy();
+    for (const c of CARS) {
+      if (c !== elise) expect(elise.spec.steerSpeed).toBeGreaterThan(c.spec.steerSpeed);
+    }
   });
 
   it('crash freezes controls until timer expires', () => {

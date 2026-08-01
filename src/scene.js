@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { worldPose, posAt, tangentAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
-import { makeSkyDome, makeClouds, makeBirds, makeBlimp, makeStartLights, makeGrandstands, makeProps } from './scenery.js';
+import { makeSkyDome, makeClouds, makeBirds, makeBlimp, makeStartLights, makeGrandstands, makeProps, makeEnvironment } from './scenery.js';
 
 function jitter(n) {
   const x = Math.sin(n * 91.7 + 33.3) * 43758.5453;
@@ -161,28 +161,6 @@ function makeArch(track, s, color, label) {
   return group;
 }
 
-function makeMountain(x, z, radius, height, color, snowCap = false) {
-  // fog: false — mountains sit beyond the fog distance and act as a
-  // flat retro horizon backdrop rather than fading out.
-  const group = new THREE.Group();
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(radius, height, 7),
-    new THREE.MeshBasicMaterial({ color, fog: false })
-  );
-  cone.position.y = height / 2;
-  group.add(cone);
-  if (snowCap) {
-    const cap = new THREE.Mesh(
-      new THREE.ConeGeometry(radius * 0.35, height * 0.32, 7),
-      new THREE.MeshBasicMaterial({ color: 0xf4f7fa, fog: false })
-    );
-    cap.position.y = height - (height * 0.32) / 2 + 0.5;
-    group.add(cap);
-  }
-  group.position.set(x, 0, z);
-  return group;
-}
-
 export function makeRivalCar(colorIndex) {
   const group = new THREE.Group();
   const color = RIVAL_COLORS[colorIndex % RIVAL_COLORS.length];
@@ -303,16 +281,8 @@ export function buildScene(track) {
   // road
   scene.add(buildRoad(track));
 
-  // mountains on the horizon (positions relative to track centroid ~ (130, -280))
-  const mtn = new THREE.Color(theme.mountain);
-  const mtnLight = mtn.clone().offsetHSL(0, 0, 0.05).getHex();
-  const mtnDark = mtn.clone().offsetHSL(0, 0, -0.05).getHex();
-  scene.add(makeMountain(900, -1200, 350, 260, theme.mountain, theme.snow));
-  scene.add(makeMountain(400, -1500, 260, 140, mtnLight));
-  scene.add(makeMountain(-800, -1000, 300, 150, mtnDark));
-  scene.add(makeMountain(1200, -300, 280, 120, mtnLight));
-  scene.add(makeMountain(-900, 300, 320, 170, theme.mountain));
-  scene.add(makeMountain(300, 900, 300, 130, mtnLight));
+  // surroundings matched to the track's character (forest, urban, stadium, …)
+  scene.add(makeEnvironment(track, theme));
 
   // billboards along the track
   const spread = [0.06, 0.14, 0.22, 0.31, 0.4, 0.48, 0.57, 0.66, 0.74, 0.83, 0.9, 0.97];
