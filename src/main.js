@@ -135,6 +135,7 @@ window.__game = {
     lap: race.lap, timeLeft: race.timeLeft, score: race.score, crashed: isCrashed(car) }),
   press: (code) => { keys.add(code); if (race.phase === 'attract') startFromMenu(); },
   release: (code) => keys.delete(code),
+  crash: () => { car = crashCar(car); playCrash(audio); },
   step: (seconds) => {
     const n = Math.round(seconds / DT);
     for (let i = 0; i < n; i++) update(DT);

@@ -1,4 +1,6 @@
-export const RACE = { startTime: 75, checkpointBonus: 40, totalLaps: 4, countdown: 3, scoreRate: 5 };
+// checkpointBonus tuned so that off-road crawling (30 m/s) cannot break even
+// on the ~38 s half-lap, while clean on-road laps comfortably gain time.
+export const RACE = { startTime: 75, checkpointBonus: 30, totalLaps: 4, countdown: 3, scoreRate: 5 };
 
 export function crossed(prevS, newS, target, trackLength) {
   if (prevS === newS) return false;
