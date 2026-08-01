@@ -205,14 +205,55 @@ body.touch.racing #touch-ui .drive { display: flex; }
 
 #touch-ui .drive.held { background: rgba(255, 210, 31, 0.35); }
 
-#tz-left, #tz-right {
+#tz-steer {
+  left: max(12px, env(safe-area-inset-left));
   bottom: max(14px, env(safe-area-inset-bottom));
-  width: 13vw;
-  height: 15vh;
-  font-size: 5.5vh;
+  width: 36vw;
+  height: 9.5vh;
+  border-radius: 999px;
+  overflow: visible;
+  touch-action: none;
 }
-#tz-left { left: max(12px, env(safe-area-inset-left)); }
-#tz-right { left: calc(max(12px, env(safe-area-inset-left)) + 14.2vw); }
+
+#tz-exit {
+  top: calc(max(48px, 8vh) + 8px);
+  right: max(12px, env(safe-area-inset-right));
+  width: 5.5vh;
+  height: 5.5vh;
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 50%;
+  font-size: 2.6vh;
+  color: #ff8080;
+  border-color: rgba(255, 100, 100, 0.5);
+}
+
+#steer-notch {
+  position: absolute;
+  left: 50%;
+  top: 15%;
+  bottom: 15%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+#steer-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 7.5vh;
+  height: 7.5vh;
+  border-radius: 50%;
+  background: rgba(255, 210, 31, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2vh;
+  color: #fff;
+  transition: left 0.05s linear;
+}
 
 #tz-brake {
   right: max(12px, env(safe-area-inset-right));

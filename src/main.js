@@ -181,6 +181,10 @@ addEventListener('keydown', (e) => {
   if (race.phase === 'racing' && /^Digit[1-4]$/.test(e.code)) {
     car = shiftGear(car, Number(e.code.slice(5)));
   }
+  if ((race.phase === 'racing' || race.phase === 'countdown') && e.code === 'Escape') {
+    quitToTitle();
+    return;
+  }
   if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Enter') {
     resetGame();
   } else if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Escape') {
@@ -197,6 +201,15 @@ function startFromMenu() {
   hideScreens(hud);
   race = startRace(race);
   startMusic(audio);
+}
+
+function quitToTitle() {
+  stopMusic(audio);
+  keys.clear();
+  car = createCarState();
+  traffic = createTraffic(track.length);
+  race = createRace(track.length, track.checkpoints);
+  openTitle();
 }
 
 function resetGame() {
@@ -254,7 +267,7 @@ function update(dt) {
   updateEngine(audio, car.speed / GEARS[car.gear - 1].cap, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);
   updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);
-  setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
+  setSkid(audio, (Math.abs(input.steer) > 0.9 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
 
 openTitle();

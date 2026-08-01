@@ -22,9 +22,12 @@ export function initTouch({ onGearDelta }) {
   ui.id = 'touch-ui';
   ui.innerHTML = `
     <div id="rotate-hint"><div>&#8635;</div><span>ROTATE FOR LANDSCAPE</span></div>
-    <div class="drive" id="tz-left">&#9664;</div>
-    <div class="drive" id="tz-right">&#9654;</div>
+    <div class="drive" id="tz-steer">
+      <div id="steer-notch"></div>
+      <div id="steer-knob">&#9664;&#9654;</div>
+    </div>
     <div class="drive" id="tz-brake">BRAKE</div>
+    <div class="drive" id="tz-exit">&#10005;</div>
     <div class="drive gearcol">
       <div class="gbtn" id="tz-gup">&#9650;<small>GEAR</small></div>
       <div class="gbtn" id="tz-gdown">&#9660;</div>
@@ -50,9 +53,37 @@ export function initTouch({ onGearDelta }) {
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
   };
-  hold($('#tz-left'), () => { state.steer = -1; }, () => { if (state.steer === -1) state.steer = 0; });
-  hold($('#tz-right'), () => { state.steer = 1; }, () => { if (state.steer === 1) state.steer = 0; });
   hold($('#tz-brake'), () => { state.brake = 1; }, () => { state.brake = 0; });
+
+  // analog steering bar: thumb offset from center = steering strength
+  const steerBar = $('#tz-steer');
+  const knob = $('#steer-knob');
+  const setSteer = (clientX) => {
+    const r = steerBar.getBoundingClientRect();
+    let v = ((clientX - r.left) / r.width) * 2 - 1;
+    v = Math.max(-1, Math.min(1, v));
+    if (Math.abs(v) < 0.1) v = 0; // center deadzone
+    state.steer = v;
+    knob.style.left = `${((v + 1) / 2) * 100}%`;
+  };
+  steerBar.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try { steerBar.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
+    steerBar.classList.add('held');
+    setSteer(e.clientX);
+  });
+  steerBar.addEventListener('pointermove', (e) => {
+    if (steerBar.classList.contains('held')) setSteer(e.clientX);
+  });
+  const endSteer = (e) => {
+    e.stopPropagation();
+    steerBar.classList.remove('held');
+    state.steer = 0;
+    knob.style.left = '50%';
+  };
+  steerBar.addEventListener('pointerup', endSteer);
+  steerBar.addEventListener('pointercancel', endSteer);
 
   const tap = (el, fn) => el.addEventListener('pointerdown', (e) => {
     e.preventDefault();
@@ -61,6 +92,7 @@ export function initTouch({ onGearDelta }) {
   });
   tap($('#tz-gup'), () => onGearDelta(1));
   tap($('#tz-gdown'), () => onGearDelta(-1));
+  tap($('#tz-exit'), () => pressKey('Escape'));
 
   // --- menu tap targets (attached to the HUD screens already in the DOM) ---
   const attract = document.querySelector('#attract');
