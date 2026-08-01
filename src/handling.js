@@ -3,7 +3,7 @@ export const CAR = {
   offroadMax: 30, offroadDecel: 40, steerSpeed: 16,
   centrifugal: 0.18, crashDuration: 2,
 };
-export const ROAD_HALF_WIDTH = 6;
+export const ROAD_HALF_WIDTH = 7.5;
 
 export function createCarState() {
   return { s: 0, x: 0, speed: 0, crashTimer: 0 };

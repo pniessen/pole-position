@@ -18,13 +18,15 @@ export function createHud() {
       <div><span class="label">Speed</span><span id="speed">0</span> km/h</div>
     </div>
     <div class="center hidden" id="countdown"></div>
+    <canvas id="minimap" width="180" height="180"></canvas>
     <div class="banner hidden" id="banner"></div>
     <div id="crashflash"></div>
     <div class="screen" id="attract">
       <h1>POLE POSITION</h1>
       <h2>First-person arcade racer</h2>
+      <h2 class="trackpick">&#9664; <span id="track-name"></span> &#9654;</h2>
       <div id="attract-scores"></div>
-      <h2 class="blink">Press any key to race</h2>
+      <h2 class="blink">&#9664; &#9654; choose track &middot; any other key to race</h2>
     </div>
     <div class="screen hidden" id="initials">
       <h2>High score! Enter your initials</h2>
@@ -35,7 +37,7 @@ export function createHud() {
       <h1 id="gameover-title">GAME OVER</h1>
       <h2 id="final-score"></h2>
       <div id="gameover-scores"></div>
-      <h2 class="blink">Press Enter to race again</h2>
+      <h2 class="blink">Enter: race again &middot; Esc: choose track</h2>
     </div>
   `;
   document.body.appendChild(root);
@@ -44,12 +46,69 @@ export function createHud() {
     root,
     score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'),
     countdown: $('countdown'), banner: $('banner'), crashflash: $('crashflash'),
-    attract: $('attract'), attractScores: $('attract-scores'),
+    attract: $('attract'), attractScores: $('attract-scores'), trackName: $('track-name'),
     initials: $('initials'), entry: $('entry'),
     gameover: $('gameover'), gameoverTitle: $('gameover-title'),
     finalScore: $('final-score'), gameoverScores: $('gameover-scores'),
+    minimap: $('minimap'),
     bannerTimer: 0, wasCrashed: false,
+    mapPoints: null, mapTransform: null,
   };
+}
+
+// --- minimap ---
+
+const MAP_PAD = 14;
+
+export function setMinimapTrack(hud, points) {
+  // points: [{x, z}] sampled uniformly along the track, in world space
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const p of points) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+  }
+  const w = hud.minimap.width - MAP_PAD * 2, h = hud.minimap.height - MAP_PAD * 2;
+  const scale = Math.min(w / (maxX - minX), h / (maxZ - minZ));
+  const ox = MAP_PAD + (w - (maxX - minX) * scale) / 2 - minX * scale;
+  const oz = MAP_PAD + (h - (maxZ - minZ) * scale) / 2 - minZ * scale;
+  hud.mapPoints = points;
+  hud.mapTransform = (p) => [p.x * scale + ox, p.z * scale + oz];
+}
+
+export function updateMinimap(hud, player, rivals) {
+  if (!hud.mapPoints) return;
+  const ctx = hud.minimap.getContext('2d');
+  const t = hud.mapTransform;
+  ctx.clearRect(0, 0, hud.minimap.width, hud.minimap.height);
+  // track outline
+  ctx.beginPath();
+  const [x0, y0] = t(hud.mapPoints[0]);
+  ctx.moveTo(x0, y0);
+  for (let i = 1; i < hud.mapPoints.length; i++) ctx.lineTo(...t(hud.mapPoints[i]));
+  ctx.closePath();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(240,240,240,0.85)';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  // start line + checkpoint markers
+  const dot = (p, r, fill) => {
+    const [x, y] = t(p);
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+  };
+  dot(hud.mapPoints[0], 3.5, '#111');
+  dot(hud.mapPoints[Math.floor(hud.mapPoints.length / 2)], 3.5, '#ffd21f');
+  // rivals then player on top
+  for (const r of rivals) dot(r, 3, '#ff5533');
+  dot(player, 4.5, '#fff');
+  const [px, py] = t(player);
+  ctx.beginPath();
+  ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#111';
+  ctx.stroke();
 }
 
 function scoreTable(scores) {
@@ -91,9 +150,10 @@ export function updateHud(hud, race, car, dt) {
   hud.wasCrashed = crashed;
 }
 
-export function showAttract(hud, scores) {
+export function showAttract(hud, scores, trackName = '') {
   hud.attract.classList.remove('hidden');
   hud.attractScores.innerHTML = scoreTable(scores);
+  hud.trackName.textContent = trackName;
   hud.gameover.classList.add('hidden');
   hud.initials.classList.add('hidden');
 }

@@ -67,6 +67,8 @@
 
 .screen .blink { animation: blink 1s steps(2) infinite; color: #35ff6a; }
 
+.screen .trackpick { color: #ffd21f; letter-spacing: 0.15em; }
+
 .screen table {
   border-collapse: collapse;
   font-size: clamp(14px, 2.2vw, 24px);
@@ -81,6 +83,15 @@
   font-size: clamp(40px, 8vw, 80px);
   letter-spacing: 0.4em;
   color: #35ff6a;
+}
+
+#minimap {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  background: rgba(0, 0, 20, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
 }
 
 #crashflash {

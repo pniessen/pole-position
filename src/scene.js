@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import { worldPose, posAt, tangentAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
 
-const SKY = 0x63b1ff;
-const GRASS = 0x3cb043;
 const ROADCOL = new THREE.Color(0x555a5e);
 const RUMBLE_A = new THREE.Color(0xe33f3f);
 const RUMBLE_B = new THREE.Color(0xf2f2f2);
@@ -11,8 +9,8 @@ const LINE = new THREE.Color(0xf7f7e8);
 
 export const RIVAL_COLORS = [0xff5533, 0xffcc22, 0x22ccff, 0xcc44ff, 0x44ff77, 0xff8844, 0x4488ff];
 
-const BILLBOARD_TEXTS = ['TURBO', 'SPEED UP', 'POLE POSITION', 'GRIP+', 'NITRO COLA', '500 MPH RADIO'];
-const BILLBOARD_BG = ['#d92222', '#1a56c4', '#e8a013', '#15881e', '#7722cc', '#0b0b0b'];
+const BILLBOARD_TEXTS = ['THE DAD SHOW', 'TURBO', 'THE DAD SHOW', 'SPEED UP', 'THE DAD SHOW', 'GRIP+', 'NITRO COLA', '500 MPH RADIO'];
+const BILLBOARD_BG = ['#1a56c4', '#d92222', '#e8a013', '#15881e', '#7722cc', '#0b0b0b', '#d92222', '#1a56c4'];
 
 function buildRoad(track) {
   // Non-indexed geometry with flat per-face colors: crisp retro segments,
@@ -70,7 +68,8 @@ function textTexture(text, bg, fg = '#ffffff', w = 512, h = 256) {
   ctx.lineWidth = 12;
   ctx.strokeRect(10, 10, w - 20, h - 20);
   ctx.fillStyle = fg;
-  ctx.font = `bold ${Math.floor(h / 3)}px "Courier New", monospace`;
+  const size = Math.min(Math.floor(h / 3), Math.floor((w - 80) / (0.62 * text.length)));
+  ctx.font = `bold ${size}px "Courier New", monospace`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, w / 2, h / 2);
@@ -215,9 +214,10 @@ export function makeHood() {
 }
 
 export function buildScene(track) {
+  const theme = track.theme || { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true };
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SKY);
-  scene.fog = new THREE.Fog(SKY, 250, 900);
+  scene.background = new THREE.Color(theme.sky);
+  scene.fog = new THREE.Fog(theme.sky, 250, 900);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.85));
   const sun = new THREE.DirectionalLight(0xfff2cc, 1.1);
@@ -227,7 +227,7 @@ export function buildScene(track) {
   // terrain
   const terrain = new THREE.Mesh(
     new THREE.CircleGeometry(2500, 48),
-    new THREE.MeshBasicMaterial({ color: GRASS })
+    new THREE.MeshBasicMaterial({ color: theme.grass })
   );
   terrain.rotation.x = -Math.PI / 2;
   terrain.position.y = -0.1;
@@ -237,12 +237,15 @@ export function buildScene(track) {
   scene.add(buildRoad(track));
 
   // mountains on the horizon (positions relative to track centroid ~ (130, -280))
-  scene.add(makeMountain(900, -1200, 350, 260, 0x7d8ca3, true)); // Fuji nod
-  scene.add(makeMountain(400, -1500, 260, 140, 0x8795a8));
-  scene.add(makeMountain(-800, -1000, 300, 150, 0x6f7f96));
-  scene.add(makeMountain(1200, -300, 280, 120, 0x8795a8));
-  scene.add(makeMountain(-900, 300, 320, 170, 0x7d8ca3));
-  scene.add(makeMountain(300, 900, 300, 130, 0x8795a8));
+  const mtn = new THREE.Color(theme.mountain);
+  const mtnLight = mtn.clone().offsetHSL(0, 0, 0.05).getHex();
+  const mtnDark = mtn.clone().offsetHSL(0, 0, -0.05).getHex();
+  scene.add(makeMountain(900, -1200, 350, 260, theme.mountain, theme.snow));
+  scene.add(makeMountain(400, -1500, 260, 140, mtnLight));
+  scene.add(makeMountain(-800, -1000, 300, 150, mtnDark));
+  scene.add(makeMountain(1200, -300, 280, 120, mtnLight));
+  scene.add(makeMountain(-900, 300, 320, 170, theme.mountain));
+  scene.add(makeMountain(300, 900, 300, 130, mtnLight));
 
   // billboards along the track
   const spread = [0.06, 0.14, 0.22, 0.31, 0.4, 0.48, 0.57, 0.66, 0.74, 0.83, 0.9, 0.97];

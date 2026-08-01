@@ -1,22 +1,58 @@
 import * as THREE from 'three';
-import { createTrack, curvatureAt } from './track.js';
+import { createTrack, curvatureAt, posAt, TRACKS } from './track.js';
 import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CAR } from './handling.js';
 import { createRace, startRace, updateRace } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
-import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry } from './hud.js';
+import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
 import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
 
-const track = createTrack();
-const { scene, updateRivals, hood } = buildScene(track);
+let trackIndex = 0;
+let track = createTrack(trackIndex);
+let { scene, updateRivals, hood } = buildScene(track);
 const camera = createCamera();
 camera.add(hood);
 scene.add(camera);
+
+function disposeScene(oldScene) {
+  oldScene.traverse((obj) => {
+    obj.geometry?.dispose();
+    const mats = Array.isArray(obj.material) ? obj.material : obj.material ? [obj.material] : [];
+    for (const m of mats) { m.map?.dispose(); m.dispose(); }
+  });
+}
+
+function setTrack(index) {
+  trackIndex = ((index % TRACKS.length) + TRACKS.length) % TRACKS.length;
+  scene.remove(camera);
+  camera.remove(hood);
+  disposeScene(scene);
+  disposeScene(hood);
+  track = createTrack(trackIndex);
+  ({ scene, updateRivals, hood } = buildScene(track));
+  camera.add(hood);
+  scene.add(camera);
+  car = createCarState();
+  traffic = createTraffic(track.length);
+  race = createRace(track.length, track.checkpoints);
+  refreshMinimap();
+  showAttract(hud, scores, track.name);
+}
+
+function refreshMinimap() {
+  const samples = [];
+  const step = track.length / 160;
+  for (let i = 0; i < 160; i++) {
+    const p = posAt(track, i * step);
+    samples.push({ x: p.x, z: p.z });
+  }
+  setMinimapTrack(hud, samples);
+}
 
 function resize() {
   const w = innerWidth || 1280, h = innerHeight || 720;
@@ -34,7 +70,8 @@ let traffic = createTraffic(track.length);
 const hud = createHud();
 let scores = loadScores();
 let enteringInitials = false;
-showAttract(hud, scores);
+refreshMinimap();
+showAttract(hud, scores, track.name);
 
 const audio = createAudio();
 
@@ -50,11 +87,21 @@ function readInput() {
 addEventListener('keydown', (e) => {
   unlock(audio);
   if (enteringInitials) return;
-  keys.add(e.code);
   if (race.phase === 'attract') {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { setTrack(trackIndex - 1); return; }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { setTrack(trackIndex + 1); return; }
+    keys.add(e.code);
     startFromMenu();
-  } else if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Enter') {
+    return;
+  }
+  keys.add(e.code);
+  if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Enter') {
     resetGame();
+  } else if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Escape') {
+    car = createCarState();
+    traffic = createTraffic(track.length);
+    race = createRace(track.length, track.checkpoints);
+    showAttract(hud, scores, track.name);
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -112,6 +159,7 @@ function update(dt) {
   updateRivals(traffic);
   updateCamera(camera, track, car, dt, input.steer);
   updateHud(hud, race, car, dt);
+  updateMinimap(hud, posAt(track, car.s), traffic.map((c) => posAt(track, c.s)));
   updateEngine(audio, car.speed, CAR.maxSpeed);
   setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * CAR.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
@@ -136,6 +184,8 @@ window.__game = {
   press: (code) => { keys.add(code); if (race.phase === 'attract') startFromMenu(); },
   release: (code) => keys.delete(code),
   crash: () => { car = crashCar(car); playCrash(audio); },
+  setTrack: (i) => setTrack(i),
+  trackName: () => track.name,
   step: (seconds) => {
     const n = Math.round(seconds / DT);
     for (let i = 0; i < n; i++) update(DT);
