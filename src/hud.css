@@ -21,6 +21,8 @@
 
 #hud .topbar .label { color: #ffd21f; margin-right: 8px; }
 
+#gear.hint { color: #35ff6a; }
+
 #hud #time.low { color: #ff4040; animation: blink 0.5s steps(2) infinite; }
 
 @keyframes blink { 50% { opacity: 0.25; } }
@@ -269,8 +271,9 @@ body.touch.racing #touch-ui .drive { display: flex; }
 #touch-ui .gearcol {
   right: max(12px, env(safe-area-inset-right));
   bottom: calc(max(14px, env(safe-area-inset-bottom)) + 12vh);
-  width: 14vw;
-  height: 13vh;
+  width: 7vw;
+  min-width: 44px;
+  height: 22vh;
   flex-direction: column;
   background: none;
   border: none;
@@ -285,7 +288,8 @@ body.touch.racing #touch-ui .drive { display: flex; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 2.2vh;
+  font-size: 4.2vh;
+  line-height: 1;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(10, 14, 30, 0.35);
   border: 2px solid rgba(255, 255, 255, 0.35);
@@ -293,7 +297,30 @@ body.touch.racing #touch-ui .drive { display: flex; }
   text-shadow: 2px 2px 0 #000;
 }
 
-#touch-ui .gbtn small { font-size: 1.1vh; color: #ffd21f; }
+#touch-ui .gbtn small { font-size: 1.2vh; color: #ffd21f; }
+
+#touch-ui .gbtn.suggest {
+  border-color: #35ff6a;
+  color: #35ff6a;
+  animation: blink 0.6s steps(2) infinite;
+}
+
+#shift-hint {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 0.8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 2vh;
+  font-weight: bold;
+  color: #35ff6a;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 0.1em;
+  display: none;
+}
+
+#shift-hint.on { display: block; animation: blink 0.6s steps(2) infinite; }
 #touch-ui .gbtn:active { background: rgba(255, 210, 31, 0.35); }
 
 #rotate-hint {

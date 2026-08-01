@@ -137,14 +137,15 @@ function scoreTable(scores) {
   return `<table><tbody>${rows}</tbody></table>`;
 }
 
-export function updateHud(hud, race, car, dt) {
+export function updateHud(hud, race, car, dt, shiftHint = null) {
   hud.score.textContent = String(Math.round(race.score)).padStart(6, '0');
   const t = Math.ceil(race.timeLeft);
   hud.time.textContent = String(t);
   hud.time.classList.toggle('low', race.phase === 'racing' && t <= 10);
   hud.lap.textContent = `${race.lap}/${RACE.totalLaps}`;
   hud.speed.textContent = String(Math.round(car.speed * 3.6));
-  hud.gear.textContent = String(car.gear ?? 1);
+  hud.gear.textContent = String(car.gear ?? 1) + (shiftHint === 'up' ? ' ▲' : shiftHint === 'down' ? ' ▼' : '');
+  hud.gear.classList.toggle('hint', !!shiftHint);
 
   if (race.phase === 'countdown') {
     hud.countdown.classList.remove('hidden');

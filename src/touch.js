@@ -29,6 +29,7 @@ export function initTouch({ onGearDelta }) {
     <div class="drive" id="tz-brake">BRAKE</div>
     <div class="drive" id="tz-exit">&#10005;</div>
     <div class="drive gearcol">
+      <div id="shift-hint"></div>
       <div class="gbtn" id="tz-gup">&#9650;<small>GEAR</small></div>
       <div class="gbtn" id="tz-gdown">&#9660;</div>
     </div>
@@ -93,6 +94,19 @@ export function initTouch({ onGearDelta }) {
   tap($('#tz-gup'), () => onGearDelta(1));
   tap($('#tz-gdown'), () => onGearDelta(-1));
   tap($('#tz-exit'), () => pressKey('Escape'));
+
+  // shift-advice prompt: highlights the right gear button and shows a label
+  const hintEl = $('#shift-hint');
+  const gup = $('#tz-gup'), gdown = $('#tz-gdown');
+  let currentHint = null;
+  state.setHint = (dir) => {
+    if (dir === currentHint) return;
+    currentHint = dir;
+    hintEl.textContent = dir === 'up' ? 'SHIFT ▲' : dir === 'down' ? 'SHIFT ▼' : '';
+    hintEl.classList.toggle('on', !!dir);
+    gup.classList.toggle('suggest', dir === 'up');
+    gdown.classList.toggle('suggest', dir === 'down');
+  };
 
   // --- menu tap targets (attached to the HUD screens already in the DOM) ---
   const attract = document.querySelector('#attract');

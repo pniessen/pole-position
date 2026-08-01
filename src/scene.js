@@ -234,7 +234,8 @@ export function makeHood(def = { style: 'sedan', color: 0xc41111 }) {
     return hood;
   }
 
-  const depth = def.style === 'roadster' ? 1.9 : 1.5;
+  // roadsters show a long hood; SUVs a short one that drops away quickly
+  const depth = def.style === 'roadster' ? 1.9 : def.style === 'suv' ? 1.25 : 1.5;
   const wedge = hoodWedge(def.color, 1.35, 0.85, depth, 0.22);
   const dash = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.1, 0.4), dark);
   dash.position.set(0, -0.03, 0.25);

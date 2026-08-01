@@ -38,6 +38,12 @@ export const CARS = [
     spec: { ...CAR, maxSpeed: 76, accel: 29, steerSpeed: 19.5, offroadMax: 26, eyeHeight: 0.95 },
     hood: { style: 'roadster', color: 0xc9ccd4 },
   },
+  {
+    name: 'Toyota RAV4',
+    desc: 'Compact SUV — sits tall, shrugs off grass',
+    spec: { ...CAR, maxSpeed: 68, accel: 21, steerSpeed: 14.5, offroadMax: 42, offroadDecel: 26, eyeHeight: 1.4 },
+    hood: { style: 'suv', color: 0x83878d },
+  },
 ];
 
 // 4-speed gearbox: each gear caps speed at a fraction of the car's top speed
@@ -51,6 +57,16 @@ export const GEARS = [
 
 export function shiftGear(car, gear) {
   return { ...car, gear: Math.max(1, Math.min(GEARS.length, gear)) };
+}
+
+// 'up' when bouncing on the current gear's limiter, 'down' when lugging a
+// gear so tall that the lower gear would pull harder, else null.
+export function shiftAdvice(car, spec = CAR) {
+  const gear = car.gear ?? GEARS.length;
+  const cap = spec.maxSpeed * GEARS[gear - 1].cap;
+  if (gear < GEARS.length && car.speed >= cap * 0.97) return 'up';
+  if (gear > 1 && car.speed <= spec.maxSpeed * GEARS[gear - 2].cap * 0.85) return 'down';
+  return null;
 }
 
 export function createCarState() {

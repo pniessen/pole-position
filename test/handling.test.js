@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { CAR, CARS, GEARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear } from '../src/handling.js';
+import { CAR, CARS, GEARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice } from '../src/handling.js';
 
 const IDLE = { throttle: 0, brake: 0, steer: 0 };
 const GAS = { throttle: 1, brake: 0, steer: 0 };
 
 describe('car roster', () => {
-  it('has 5 cars with unique names and complete specs', () => {
-    expect(CARS.length).toBe(5);
-    expect(new Set(CARS.map(c => c.name)).size).toBe(5);
+  it('has 6 cars with unique names and complete specs', () => {
+    expect(CARS.length).toBe(6);
+    expect(new Set(CARS.map(c => c.name)).size).toBe(6);
     for (const c of CARS) {
       for (const key of ['maxSpeed', 'accel', 'steerSpeed', 'offroadMax', 'eyeHeight']) {
         expect(c.spec[key], `${c.name}.${key}`).toBeGreaterThan(0);
@@ -125,6 +125,19 @@ describe('stepCar', () => {
     car = shiftGear(car, 2);
     for (let i = 0; i < 60; i++) car = stepCar(car, GAS, 0, 100000, 1);
     expect(car.speed).toBeCloseTo(CAR.maxSpeed * GEARS[1].cap);
+  });
+
+  it('shiftAdvice: up at the limiter, down when lugging, null otherwise', () => {
+    // pinned at 1st gear cap → upshift
+    expect(shiftAdvice({ ...createCarState(), gear: 1, speed: CAR.maxSpeed * GEARS[0].cap })).toBe('up');
+    // 4th gear at low speed → downshift pulls harder
+    expect(shiftAdvice({ ...createCarState(), gear: 4, speed: 30 })).toBe('down');
+    // mid-band in 2nd → no advice
+    expect(shiftAdvice({ ...createCarState(), gear: 2, speed: CAR.maxSpeed * 0.5 })).toBe(null);
+    // at the 4th gear cap → nothing above to shift to
+    expect(shiftAdvice({ ...createCarState(), gear: 4, speed: CAR.maxSpeed })).toBe(null);
+    // 1st gear standstill → nothing below
+    expect(shiftAdvice({ ...createCarState(), gear: 1, speed: 0 })).toBe(null);
   });
 
   it('Lotus Elise has the best handling in the roster', () => {

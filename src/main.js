@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt, posAt, countTurns, TRACKS } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, CARS, GEARS } from './handling.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, CARS, GEARS } from './handling.js';
 import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
@@ -261,7 +261,9 @@ function update(dt) {
   updateWorld(dt);
   setStartLights(startLightState(race));
   updateCamera(camera, track, car, dt, input.steer, carDef.spec);
-  updateHud(hud, race, car, dt);
+  const advice = race.phase === 'racing' && !isCrashed(car) ? shiftAdvice(car, carDef.spec) : null;
+  touch.setHint?.(advice);
+  updateHud(hud, race, car, dt, advice);
   updateMinimap(hud, posAt(track, car.s), traffic.map((c) => posAt(track, c.s)));
   // engine revs climb within the current gear and drop on upshift
   updateEngine(audio, car.speed / GEARS[car.gear - 1].cap, carDef.spec.maxSpeed);
