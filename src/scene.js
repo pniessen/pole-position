@@ -205,12 +205,12 @@ export function makeHood() {
   geo.computeVertexNormals();
   const wedge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xc41111, side: THREE.DoubleSide }));
   const dash = new THREE.Mesh(
-    new THREE.BoxGeometry(2.7, 0.16, 0.5),
+    new THREE.BoxGeometry(2.7, 0.1, 0.4),
     new THREE.MeshBasicMaterial({ color: 0x17181c })
   );
-  dash.position.set(0, 0.05, 0.15);
+  dash.position.set(0, -0.03, 0.25);
   hood.add(wedge, dash);
-  hood.position.set(0, -0.52, -1.1);
+  hood.position.set(0, -0.62, -1.1);
   return hood;
 }
 
