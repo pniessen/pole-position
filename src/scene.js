@@ -18,7 +18,7 @@ export const RIVAL_COLORS = [0xff5533, 0xffcc22, 0x22ccff, 0xcc44ff, 0x44ff77, 0
 const BILLBOARD_TEXTS = ['THE DAD SHOW', 'TURBO', 'THE DAD SHOW', 'SPEED UP', 'THE DAD SHOW', 'GRIP+', 'NITRO COLA', '500 MPH RADIO'];
 const BILLBOARD_BG = ['#1a56c4', '#d92222', '#e8a013', '#15881e', '#7722cc', '#0b0b0b', '#d92222', '#1a56c4'];
 
-function buildRoad(track) {
+function buildRoad(track, theme) {
   // Non-indexed geometry with flat per-face colors: crisp retro segments,
   // no vertex-color bleeding between road, centerline, and rumble strips.
   const step = 3;
@@ -64,6 +64,20 @@ function buildRoad(track) {
       const d = ringPos[i][j + 1], e = ringPos[i + 1][j + 1];
       // two triangles: a,b,d and b,e,d
       positions.push(...a, ...b, ...d, ...b, ...e, ...d);
+      for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
+    }
+  }
+
+  // embankment skirts: walls from each road edge down to below the terrain,
+  // so elevated sections read as earthworks instead of floating ribbons
+  const dirt = new THREE.Color(theme?.grass ?? 0x3cb043).multiplyScalar(0.55);
+  const dirtDark = dirt.clone().multiplyScalar(0.85);
+  for (const j of [0, offs.length - 1]) {
+    for (let i = 0; i < n; i++) {
+      const a = ringPos[i][j], b = ringPos[i + 1][j];
+      const a2 = [a[0], -0.4, a[2]], b2 = [b[0], -0.4, b[2]];
+      positions.push(...a, ...a2, ...b, ...b, ...a2, ...b2);
+      const c = i % 2 ? dirt : dirtDark;
       for (let k = 0; k < 6; k++) colors.push(c.r, c.g, c.b);
     }
   }
@@ -279,7 +293,7 @@ export function buildScene(track) {
   scene.add(terrain);
 
   // road
-  scene.add(buildRoad(track));
+  scene.add(buildRoad(track, theme));
 
   // surroundings matched to the track's character (forest, urban, stadium, …)
   scene.add(makeEnvironment(track, theme));
@@ -292,8 +306,8 @@ export function buildScene(track) {
     const { position, tangent } = worldPose(track, s, side);
     const bb = makeBillboard(BILLBOARD_TEXTS[i % BILLBOARD_TEXTS.length], BILLBOARD_BG[i % BILLBOARD_BG.length]);
     bb.position.copy(position);
-    // face the road
-    bb.lookAt(worldPose(track, s, 0).position.setY(position.y));
+    bb.position.y = 0; // stand on the terrain, not at road elevation
+    bb.lookAt(worldPose(track, s, 0).position.setY(0));
     scene.add(bb);
   });
 

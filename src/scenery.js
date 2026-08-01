@@ -240,6 +240,17 @@ function makeStandUnit(seed) {
   return unit;
 }
 
+// solid base under a stand whose ground level sits above the flat terrain
+function addPlinth(unit, elev) {
+  if (elev < 0.5) return;
+  const plinth = new THREE.Mesh(
+    new THREE.BoxGeometry(14.6, elev + 0.4, 9.6),
+    new THREE.MeshLambertMaterial({ color: 0x3a3f4a })
+  );
+  plinth.position.set(0, -(elev + 0.4) / 2, -2.8);
+  unit.add(plinth);
+}
+
 export function makeGrandstands(track) {
   const group = new THREE.Group();
   const offset = ROAD_HALF_WIDTH + 1.6 + 7;
@@ -249,6 +260,7 @@ export function makeGrandstands(track) {
       const unit = makeStandUnit(seed++);
       const { position } = worldPose(track, s, side * offset);
       unit.position.copy(position);
+      addPlinth(unit, position.y);
       const roadPoint = worldPose(track, s, 0).position;
       roadPoint.y = position.y;
       unit.lookAt(roadPoint);
@@ -443,6 +455,7 @@ function makeStadiumRing(track) {
       const unit = makeStandUnit(seed++);
       const { position } = worldPose(track, s, side * offset);
       unit.position.copy(position);
+      addPlinth(unit, position.y);
       const roadPoint = worldPose(track, s, 0).position;
       roadPoint.y = position.y;
       unit.lookAt(roadPoint);
