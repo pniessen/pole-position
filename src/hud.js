@@ -37,6 +37,12 @@ export function createHud() {
         <div id="select-stats"></div>
       </div>
       <h2 class="blink" id="select-prompt">&#9664; &#9654; browse &middot; Enter confirm &middot; Esc back</h2>
+      <div class="navbtn prev" id="sel-prev">&#9664;</div>
+      <div class="navbtn next" id="sel-next">&#9654;</div>
+      <div class="selbtns">
+        <h2 class="tapbtn" id="sel-back">&#8617; BACK</h2>
+        <h2 class="tapbtn confirm" id="sel-confirm">SELECT &#10003;</h2>
+      </div>
     </div>
     <div class="screen hidden" id="initials">
       <h2>High score! Enter your initials</h2>

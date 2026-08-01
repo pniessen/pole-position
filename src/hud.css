@@ -327,6 +327,40 @@ body.touch.racing #touch-ui .drive { display: flex; }
   pointer-events: auto;
 }
 
+.tapbtn:active { background: rgba(255, 210, 31, 0.3); }
+
+/* select-screen touch buttons: hidden on desktop, real targets on touch */
+.navbtn, .selbtns { display: none; }
+
+body.touch .navbtn {
+  display: flex;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  width: max(52px, 8vw);
+  height: max(72px, 20vh);
+  font-size: max(26px, 5vh);
+  color: #ffd21f;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(255, 210, 31, 0.6);
+  border-radius: 12px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+body.touch .navbtn.prev { left: max(10px, env(safe-area-inset-left)); }
+body.touch .navbtn.next { right: max(10px, env(safe-area-inset-right)); }
+body.touch .navbtn:active { background: rgba(255, 210, 31, 0.35); }
+
+body.touch .selbtns {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.selbtns .confirm { color: #35ff6a; border-color: #35ff6a; }
+
 #tap-kb {
   display: none;
   grid-template-columns: repeat(7, 1fr);

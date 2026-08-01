@@ -98,13 +98,18 @@ export function initTouch({ onGearDelta }) {
   const attract = document.querySelector('#attract');
   attract?.addEventListener('pointerdown', () => pressKey('Enter'));
 
-  const select = document.querySelector('#select');
-  select?.addEventListener('pointerdown', (e) => {
-    const frac = e.clientX / innerWidth;
-    if (frac < 0.3) pressKey('ArrowLeft');
-    else if (frac > 0.7) pressKey('ArrowRight');
-    else pressKey('Enter');
+  // select screens browse/confirm only via explicit buttons — tapping the
+  // card itself must never choose anything
+  const selKey = (sel, code) => document.querySelector(sel)?.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    pressKey(code);
   });
+  selKey('#sel-prev', 'ArrowLeft');
+  selKey('#sel-next', 'ArrowRight');
+  selKey('#sel-confirm', 'Enter');
+  selKey('#sel-back', 'Escape');
+  const prompt = document.querySelector('#select-prompt');
+  if (prompt) prompt.innerHTML = '&#9664; &#9654; browse &middot; SELECT to confirm';
 
   const gameover = document.querySelector('#gameover');
   if (gameover) {
