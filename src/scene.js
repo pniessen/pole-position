@@ -35,9 +35,12 @@ function buildRoad(track, theme) {
   for (let i = 0; i <= n; i++) {
     const s = (i / n) * track.length;
     const ring = [];
-    for (const off of offs) {
-      const { position } = worldPose(track, s, off);
-      ring.push([position.x, position.y + 0.05, position.z]);
+    for (let j = 0; j < offs.length; j++) {
+      const { position } = worldPose(track, s, offs[j]);
+      // curbs ridge up at their outer edge so the road still reads as a
+      // red/white line when a bend is viewed edge-on across flat ground
+      const dy = j === 0 || j === offs.length - 1 ? 0.22 : 0.05;
+      ring.push([position.x, position.y + dy, position.z]);
     }
     ringPos.push(ring);
   }

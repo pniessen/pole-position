@@ -71,6 +71,12 @@ for (let i = 0; i < TRACKS.length; i++) {
       expect(a.distanceTo(b)).toBeCloseTo(6, 0);
     });
 
+    it('minimum curve radius exceeds the road half-width (no ribbon folds or seam cusps)', () => {
+      let maxK = 0;
+      for (let s = 0; s < track.length; s += 2) maxK = Math.max(maxK, Math.abs(curvatureAt(track, s)));
+      expect(1 / maxK, `min radius on ${track.name}`).toBeGreaterThan(11);
+    });
+
     it('curvature integrates to ±2π around the loop (no figure-eights)', () => {
       let total = 0;
       const step = 2; // fine sampling so hairpins are not underestimated

@@ -66,7 +66,6 @@ export const TRACKS = [
       [-60, 9, -700], [-140, 10, -620], [-220, 10, -680], [-300, 8, -600],
       [-370, 4, -500], [-340, 4, -390], [-260, 7, -320], [-220, 10, -200],
       [-260, 13, -100], [-180, 15, -40], [-90, 14, -100], [-40, 12, -30],
-      [-20, 9, 30],
     ],
   },
   {
@@ -78,7 +77,8 @@ export const TRACKS = [
       [60, 4, 130], [-60, 1, 165], [-95, 3, 95], [-130, 6, 20],
       [-260, 8, -60], [-420, 10, -140], [-560, 10, -230], [-540, 9, -330],
       [-430, 7, -390], [-290, 5, -380], [-150, 3, -330], [-30, 2, -260],
-      [80, 3, -190], [140, 5, -110], [110, 7, -40],
+      [80, 3, -190], [140, 5, -110], [30, 8, -45], [-25, 9, -38],
+      [-48, 9, -12], [-30, 9, 10],
     ],
   },
   {
@@ -86,8 +86,8 @@ export const TRACKS = [
     tagline: 'The Temple of Speed — chicanes and flat-out straights',
     theme: { sky: 0x74baff, grass: 0x4aa54a, mountain: 0x8795a8, snow: false, horizon: 0xdcecff, prop: 'pine', environment: 'park' },
     points: [
-      [0, 0, 0], [260, 0, 0], [500, 0, 0], [545, 0, -2],
-      [575, 0, -18], [605, 0, -6], [700, 0, -30], [800, 0, -120],
+      [0, 0, 0], [260, 0, 0], [495, 0, 0], [535, 0, -4],
+      [575, 0, -20], [615, 0, -8], [700, 0, -30], [800, 0, -120],
       [815, 0, -190], [790, 0, -228], [812, 0, -300], [780, 0, -380],
       [640, 1, -415], [460, 1, -440], [220, 1, -460], [125, 0, -432],
       [82, 0, -470], [20, 0, -452], [-120, 0, -420], [-215, 0, -350],
@@ -106,7 +106,8 @@ export const TRACKS = [
       [25, 5, 190], [70, 4, 215], [150, 3, 195], [220, 2, 150],
       [250, 2, 90], [300, 2, 30], [370, 1, -30], [395, 1, -105],
       [340, 1, -150], [280, 1, -118], [225, 1, -152], [150, 1, -128],
-      [100, 2, -92], [45, 1, -45],
+      [100, 2, -92], [20, 1, -52], [-20, 1, -40], [-31, 1, -42],
+      [-40, 1, -37], [-43, 1, -27], [-40, 2, -17], [-31, 2, -12],
     ],
   },
   {
@@ -153,7 +154,7 @@ export const TRACKS = [
       [-140, 2, 130], [-210, 2, 170], [-260, 1, 100], [-280, 0, -60],
       [-285, 0, -220], [-260, 0, -290], [-200, 0, -310], [-120, 0, -290],
       [-60, 1, -330], [10, 1, -300], [90, 1, -260], [130, 1, -180],
-      [120, 0, -90], [80, 0, -30],
+      [60, 0, -80], [-10, 0, -48],
     ],
   },
 ];
@@ -162,7 +163,9 @@ export function createTrack(index = 0) {
   const def = TRACKS[index];
   const k = def.scale ?? 1;
   const points = def.points.map(([x, y, z]) => new THREE.Vector3(x * k, y, z * k));
-  const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
+  // centripetal parameterization: no overshoot/cusping where short control
+  // segments meet long ones (uniform catmullrom kinked at the loop seams)
+  const curve = new THREE.CatmullRomCurve3(points, true, 'centripetal');
   const length = curve.getLength();
   return { curve, length, checkpoints: [0, length / 2], name: def.name, tagline: def.tagline, theme: def.theme, index };
 }
