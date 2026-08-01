@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RACE, createRace, startRace, updateRace, crossed } from '../src/race.js';
+import { RACE, createRace, startRace, updateRace, crossed, startLightState } from '../src/race.js';
 
 const L = 2000;
 const CPS = [0, 1000];
@@ -16,6 +16,31 @@ describe('crossed', () => {
   it('detects wrap-around crossing of 0', () => expect(crossed(1990, 15, 0, L)).toBe(true));
   it('ignores zero movement', () => expect(crossed(1000, 1000, 1000, L)).toBe(false));
   it('target exactly at prevS does not count', () => expect(crossed(1000, 1010, 1000, L)).toBe(false));
+});
+
+describe('startLightState', () => {
+  it('is off outside countdown/launch', () => {
+    expect(startLightState(createRace(L, CPS))).toBe('off');
+    let r = racing();
+    r = updateRace(r, RACE.startTime + 1, 100, 110, 10); // gameover
+    expect(startLightState(r)).toBe('off');
+  });
+
+  it('lights one red lamp per elapsed countdown second', () => {
+    let r = startRace(createRace(L, CPS));
+    expect(startLightState(r)).toBe(1); // countdown 3.0
+    r = updateRace(r, 1.1, 0, 0, 0);    // ~1.9 left
+    expect(startLightState(r)).toBe(2);
+    r = updateRace(r, 1.0, 0, 0, 0);    // ~0.9 left
+    expect(startLightState(r)).toBe(3);
+  });
+
+  it('goes green for the first second of racing, then off', () => {
+    let r = racing();
+    expect(startLightState(r)).toBe('go');
+    r = updateRace(r, 1.5, 0, 10, 10);
+    expect(startLightState(r)).toBe('off');
+  });
 });
 
 describe('race flow', () => {

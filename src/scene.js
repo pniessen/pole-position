@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { worldPose, posAt, tangentAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
+import { makeSkyDome, makeClouds, makeBirds, makeBlimp, makeStartLights, makeGrandstands, makeProps } from './scenery.js';
+
+function jitter(n) {
+  const x = Math.sin(n * 91.7 + 33.3) * 43758.5453;
+  return x - Math.floor(x);
+}
 
 const ROADCOL = new THREE.Color(0x555a5e);
 const RUMBLE_A = new THREE.Color(0xe33f3f);
@@ -19,7 +25,10 @@ function buildRoad(track) {
   const half = ROAD_HALF_WIDTH;
   const rumble = half + 1.6;
   const n = Math.ceil(track.length / step);
-  const offs = [-rumble, -half, -0.25, 0.25, half, rumble];
+  // columns: rumble | road | lane wear | road | centerline | road | lane wear | road | rumble
+  const offs = [-rumble, -half, -4.6, -2.8, -0.3, 0.3, 2.8, 4.6, half, rumble];
+  const WEAR_COLS = new Set([2, 6]);
+  const CENTER_COL = 4;
   const positions = [], colors = [];
 
   const ringPos = [];
@@ -33,16 +42,21 @@ function buildRoad(track) {
     ringPos.push(ring);
   }
 
+  const scratch = new THREE.Color();
   for (let i = 0; i < n; i++) {
     const s = (i / n) * track.length;
     const seg = Math.floor(s / 12) % 2;
+    // subtle patchiness so the asphalt doesn't read as one flat sheet
+    const shade = 0.95 + jitter(i) * 0.08;
     for (let j = 0; j < offs.length - 1; j++) {
       const isRumble = j === 0 || j === offs.length - 2;
-      const isCenter = j === 2;
       let c;
       if (isRumble) c = seg ? RUMBLE_A : RUMBLE_B;
-      else if (isCenter && seg) c = LINE;
-      else c = ROADCOL;
+      else if (j === CENTER_COL && seg) c = LINE;
+      else {
+        scratch.copy(ROADCOL).multiplyScalar(shade * (WEAR_COLS.has(j) ? 0.86 : 1));
+        c = scratch;
+      }
       const a = ringPos[i][j], b = ringPos[i + 1][j];
       const d = ringPos[i][j + 1], e = ringPos[i + 1][j + 1];
       // two triangles: a,b,d and b,e,d
@@ -254,19 +268,31 @@ export function makeHood(def = { style: 'sedan', color: 0xc41111 }) {
 export function buildScene(track) {
   const theme = track.theme || { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true };
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(theme.sky);
-  scene.fog = new THREE.Fog(theme.sky, 250, 900);
+  scene.background = new THREE.Color(theme.horizon ?? theme.sky);
+  scene.fog = new THREE.Fog(theme.horizon ?? theme.sky, 280, 1000);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.85));
   const sun = new THREE.DirectionalLight(0xfff2cc, 1.1);
   sun.position.set(300, 400, 100);
   scene.add(sun);
 
-  // terrain
-  const terrain = new THREE.Mesh(
-    new THREE.CircleGeometry(2500, 48),
-    new THREE.MeshBasicMaterial({ color: theme.grass })
-  );
+  scene.add(makeSkyDome(theme));
+
+  // terrain with subtle color patches (mowed-field feel)
+  const terrainGeo = new THREE.CircleGeometry(2500, 64);
+  {
+    const pos = terrainGeo.getAttribute('position');
+    const cols = new Float32Array(pos.count * 3);
+    const base = new THREE.Color(theme.grass);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      const shade = 0.88 + jitter(i * 3.7) * 0.2;
+      c.copy(base).multiplyScalar(shade);
+      cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+    }
+    terrainGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  }
+  const terrain = new THREE.Mesh(terrainGeo, new THREE.MeshBasicMaterial({ vertexColors: true }));
   terrain.rotation.x = -Math.PI / 2;
   terrain.position.y = -0.1;
   scene.add(terrain);
@@ -302,6 +328,21 @@ export function buildScene(track) {
   scene.add(makeArch(track, 0, 0xdddddd, 'START'));
   scene.add(makeArch(track, track.checkpoints[1], 0xf2c522, 'CHECKPOINT'));
 
+  // spectacle: sky traffic, grandstands, start lights, theme flora
+  const clouds = makeClouds();
+  const birds = makeBirds();
+  const blimp = makeBlimp();
+  const startLights = makeStartLights(track);
+  scene.add(clouds, birds, blimp, startLights, makeGrandstands(track), makeProps(track, theme));
+
+  function updateWorld(dt) {
+    clouds.userData.update(dt);
+    birds.userData.update(dt);
+    blimp.userData.update(dt);
+  }
+
+  const setStartLights = (state) => startLights.userData.setState(state);
+
   // rival meshes
   const rivalMeshes = [];
   for (let i = 0; i < RIVAL_COLORS.length; i++) {
@@ -324,5 +365,5 @@ export function buildScene(track) {
     }
   }
 
-  return { scene, rivalMeshes, updateRivals };
+  return { scene, rivalMeshes, updateRivals, updateWorld, setStartLights };
 }

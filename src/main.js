@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt, posAt, TRACKS } from './track.js';
 import { createCarState, stepCar, crashCar, isCrashed, isOffroad, CARS } from './handling.js';
-import { createRace, startRace, updateRace } from './race.js';
+import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
 import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
-import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic } from './audio.js';
+import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic, updateCrowd } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
 
 let trackIndex = 0;
 let track = createTrack(trackIndex);
-let { scene, updateRivals } = buildScene(track);
+let { scene, updateRivals, updateWorld, setStartLights } = buildScene(track);
 let carIndex = 0;
 let carDef = CARS[carIndex];
 let hood = makeHood(carDef.hood);
@@ -35,7 +35,7 @@ function setTrack(index) {
   scene.remove(camera);
   disposeScene(scene);
   track = createTrack(trackIndex);
-  ({ scene, updateRivals } = buildScene(track));
+  ({ scene, updateRivals, updateWorld, setStartLights } = buildScene(track));
   scene.add(camera);
   car = createCarState();
   traffic = createTraffic(track.length);
@@ -172,10 +172,14 @@ function update(dt) {
     }
   }
   updateRivals(traffic);
+  updateWorld(dt);
+  setStartLights(startLightState(race));
   updateCamera(camera, track, car, dt, input.steer, carDef.spec);
   updateHud(hud, race, car, dt);
   updateMinimap(hud, posAt(track, car.s), traffic.map((c) => posAt(track, c.s)));
   updateEngine(audio, car.speed, carDef.spec.maxSpeed);
+  const distToLine = Math.min(car.s, track.length - car.s);
+  updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);
   setSkid(audio, (Math.abs(input.steer) === 1 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
 }
 

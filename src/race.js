@@ -10,6 +10,16 @@ export function crossed(prevS, newS, target, trackLength) {
   return toTarget > 0 && toTarget <= travel;
 }
 
+// Arcade start-light gantry state: 'off', 1..3 red lamps, or 'go' (green)
+// during the first second after launch.
+export function startLightState(race) {
+  if (race.phase === 'countdown') {
+    return Math.min(3, Math.max(1, 4 - Math.ceil(race.countdown)));
+  }
+  if (race.phase === 'racing' && race.timeLeft > RACE.startTime - 1) return 'go';
+  return 'off';
+}
+
 export function createRace(trackLength, checkpoints) {
   return {
     phase: 'attract', timeLeft: RACE.startTime, lap: 1, score: 0,

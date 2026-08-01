@@ -7,7 +7,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 export const TRACKS = [
   {
     name: 'FUJI SPEEDWAY',
-    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true },
+    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true, horizon: 0xcfe8ff, prop: 'pine' },
     points: [
       [0, 0, 0], [140, 0, 0], [280, 0, -10], [380, 0, -60],
       [420, 2, -140], [380, 4, -220], [280, 5, -260], [180, 4, -230],
@@ -18,7 +18,7 @@ export const TRACKS = [
   },
   {
     name: 'DESERT RUN',
-    theme: { sky: 0xf2a95c, grass: 0xd9b36c, mountain: 0x9c6248, snow: false },
+    theme: { sky: 0xf2a95c, grass: 0xd9b36c, mountain: 0x9c6248, snow: false, horizon: 0xffd9a8, prop: 'cactus', sunColor: 0xffc978, sunSize: 80 },
     points: [
       [0, 0, 0], [180, 0, 0], [360, 0, -20], [480, 0, -90],
       [520, 0, -200], [480, 0, -310], [360, 2, -380], [240, 4, -420],
@@ -30,7 +30,7 @@ export const TRACKS = [
   },
   {
     name: 'SEASIDE SPRINT',
-    theme: { sky: 0x6fd6ff, grass: 0x2fae7d, mountain: 0x5f7f9c, snow: false },
+    theme: { sky: 0x6fd6ff, grass: 0x2fae7d, mountain: 0x5f7f9c, snow: false, horizon: 0xe0f6ff, prop: 'palm' },
     points: [
       [0, 0, 0], [120, 0, 0], [200, 0, -40], [220, 2, -120],
       [160, 3, -180], [80, 3, -160], [40, 1, -240], [100, 0, -320],

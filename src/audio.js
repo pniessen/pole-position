@@ -20,6 +20,7 @@ export function unlock(audio) {
       audio.master.connect(audio.ctx.destination);
       buildEngine(audio);
       buildSkid(audio);
+      buildCrowd(audio);
     }
     if (audio.ctx.state === 'suspended') audio.ctx.resume();
   } catch { /* run silent */ }
@@ -70,6 +71,27 @@ function buildSkid(audio) {
   src.connect(band).connect(gain).connect(master);
   src.start();
   audio.skidGain = gain;
+}
+
+function buildCrowd(audio) {
+  const { ctx, master } = audio;
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx, 2);
+  src.loop = true;
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowpass';
+  low.frequency.value = 480;
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  src.connect(low).connect(gain).connect(master);
+  src.start();
+  audio.crowdGain = gain;
+}
+
+// level 0..1 — cheering swells as the grandstands approach
+export function updateCrowd(audio, level) {
+  if (!audio.crowdGain) return;
+  audio.crowdGain.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * 0.28, audio.ctx.currentTime, 0.15);
 }
 
 export function updateEngine(audio, speed, maxSpeed) {
