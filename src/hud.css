@@ -1,0 +1,93 @@
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.hidden { display: none !important; }
+
+#hud .topbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 24px;
+  font-size: clamp(16px, 2.6vw, 28px);
+}
+
+#hud .topbar .label { color: #ffd21f; margin-right: 8px; }
+
+#hud #time.low { color: #ff4040; animation: blink 0.5s steps(2) infinite; }
+
+@keyframes blink { 50% { opacity: 0.25; } }
+
+#hud .center {
+  position: absolute;
+  top: 30%;
+  width: 100%;
+  text-align: center;
+  font-size: clamp(40px, 9vw, 110px);
+  color: #ffd21f;
+}
+
+#hud .banner {
+  position: absolute;
+  top: 18%;
+  width: 100%;
+  text-align: center;
+  font-size: clamp(24px, 5vw, 52px);
+  color: #35ff6a;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(0, 0, 20, 0.72);
+  text-align: center;
+}
+
+.screen h1 {
+  font-size: clamp(40px, 8vw, 90px);
+  color: #ffd21f;
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-shadow: 4px 4px 0 #c41111, 8px 8px 0 #000;
+}
+
+.screen h2 { font-size: clamp(22px, 4vw, 40px); color: #fff; margin: 0; }
+
+.screen .blink { animation: blink 1s steps(2) infinite; color: #35ff6a; }
+
+.screen table {
+  border-collapse: collapse;
+  font-size: clamp(14px, 2.2vw, 24px);
+  color: #fff;
+}
+
+.screen table td { padding: 2px 18px; }
+.screen table .rank { color: #ffd21f; }
+.screen table .top { color: #ff4040; }
+
+#initials .entry {
+  font-size: clamp(40px, 8vw, 80px);
+  letter-spacing: 0.4em;
+  color: #35ff6a;
+}
+
+#crashflash {
+  position: absolute;
+  inset: 0;
+  background: #ff2200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}

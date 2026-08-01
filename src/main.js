@@ -5,6 +5,8 @@ import { createRace, startRace, updateRace } from './race.js';
 import { createTraffic, updateTraffic, findCollision } from './traffic.js';
 import { buildScene } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
+import { createHud, updateHud, showAttract, hideScreens, showGameOver, showInitialsEntry } from './hud.js';
+import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -28,6 +30,11 @@ let car = createCarState();
 let race = createRace(track.length, track.checkpoints);
 let traffic = createTraffic(track.length);
 
+const hud = createHud();
+let scores = loadScores();
+let enteringInitials = false;
+showAttract(hud, scores);
+
 const input = { throttle: 0, brake: 0, steer: 0 };
 const keys = new Set();
 function readInput() {
@@ -38,19 +45,40 @@ function readInput() {
 }
 
 addEventListener('keydown', (e) => {
+  if (enteringInitials) return;
   keys.add(e.code);
   if (race.phase === 'attract') {
-    race = startRace(race);
+    startFromMenu();
   } else if ((race.phase === 'gameover' || race.phase === 'finished') && e.code === 'Enter') {
     resetGame();
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 
+function startFromMenu() {
+  hideScreens(hud);
+  race = startRace(race);
+}
+
 function resetGame() {
   car = createCarState();
   traffic = createTraffic(track.length);
+  hideScreens(hud);
   race = startRace(createRace(track.length, track.checkpoints));
+}
+
+function onRaceEnded() {
+  if (qualifies(scores, race.score)) {
+    enteringInitials = true;
+    showInitialsEntry(hud, (initials) => {
+      scores = submitScore(scores, initials, race.score);
+      persistScores(scores);
+      enteringInitials = false;
+      showGameOver(hud, race, scores);
+    });
+  } else {
+    showGameOver(hud, race, scores);
+  }
 }
 
 function update(dt) {
@@ -66,9 +94,11 @@ function update(dt) {
       }
     }
     race = updateRace(race, dt, prevS, car.s, car.speed);
+    if (race.phase === 'gameover' || race.phase === 'finished') onRaceEnded();
   }
   updateRivals(traffic);
   updateCamera(camera, track, car, dt, input.steer);
+  updateHud(hud, race, car, dt);
 }
 
 const DT = 1 / 60;
@@ -88,7 +118,7 @@ requestAnimationFrame(frame);
 window.__game = {
   getState: () => ({ phase: race.phase, s: car.s, x: car.x, speed: car.speed,
     lap: race.lap, timeLeft: race.timeLeft, score: race.score, crashed: isCrashed(car) }),
-  press: (code) => { keys.add(code); if (race.phase === 'attract') race = startRace(race); },
+  press: (code) => { keys.add(code); if (race.phase === 'attract') startFromMenu(); },
   release: (code) => keys.delete(code),
   step: (seconds) => {
     const n = Math.round(seconds / DT);
