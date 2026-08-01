@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { worldPose, posAt, tangentAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
 import { makeSkyDome, makeClouds, makeBirds, makeBlimp, makeStartLights, makeGrandstands, makeProps, makeEnvironment } from './scenery.js';
+import { makeCarModel } from './carmodels.js';
 
 function jitter(n) {
   const x = Math.sin(n * 91.7 + 33.3) * 43758.5453;
@@ -178,29 +179,12 @@ function makeArch(track, s, color, label) {
   return group;
 }
 
+// rivals reuse the refined showroom models, cycling body styles for variety
+const RIVAL_STYLES = ['sedan', 'roadster', 'wagon', 'suv', 'open-wheel'];
+
 export function makeRivalCar(colorIndex) {
-  const group = new THREE.Group();
   const color = RIVAL_COLORS[colorIndex % RIVAL_COLORS.length];
-  const bodyMat = new THREE.MeshLambertMaterial({ color });
-  const darkMat = new THREE.MeshLambertMaterial({ color: 0x14161a });
-
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 0.55, 4.2), bodyMat);
-  body.position.y = 0.45;
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 1.2), bodyMat);
-  nose.position.set(0, 0.35, 2.6);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 1.5), darkMat);
-  cabin.position.set(0, 0.95, -0.3);
-  const wing = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 0.6), darkMat);
-  wing.position.set(0, 1.05, -2);
-  group.add(body, nose, cabin, wing);
-
-  const wheelGeo = new THREE.BoxGeometry(0.5, 0.7, 0.9);
-  for (const [wx, wz] of [[-1.15, 1.4], [1.15, 1.4], [-1.15, -1.5], [1.15, -1.5]]) {
-    const wheel = new THREE.Mesh(wheelGeo, darkMat);
-    wheel.position.set(wx, 0.35, wz);
-    group.add(wheel);
-  }
-  return group;
+  return makeCarModel(RIVAL_STYLES[colorIndex % RIVAL_STYLES.length], color);
 }
 
 function hoodWedge(color, nearW, farW, depth, drop) {
@@ -350,6 +334,7 @@ export function buildScene(track) {
       if (!car) { mesh.visible = false; continue; }
       mesh.visible = true;
       const { position, tangent } = worldPose(track, car.s, car.x);
+      position.y += 0.05; // tires on the asphalt surface
       mesh.position.copy(position);
       _look.copy(position).add(tangent);
       mesh.lookAt(_look);

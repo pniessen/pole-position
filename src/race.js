@@ -16,13 +16,13 @@ export function startLightState(race) {
   if (race.phase === 'countdown') {
     return Math.min(3, Math.max(1, 4 - Math.ceil(race.countdown)));
   }
-  if (race.phase === 'racing' && race.timeLeft > RACE.startTime - 1) return 'go';
+  if (race.phase === 'racing' && race.elapsed < 1) return 'go';
   return 'off';
 }
 
 export function createRace(trackLength, checkpoints) {
   return {
-    phase: 'attract', timeLeft: RACE.startTime, lap: 1, score: 0,
+    phase: 'attract', timeLeft: RACE.startTime, lap: 1, score: 0, elapsed: 0,
     trackLength, checkpoints, countdown: RACE.countdown,
     justCheckpoint: false, justLap: false,
   };
@@ -41,6 +41,7 @@ export function updateRace(race, dt, prevS, newS, speed) {
   }
   if (r.phase !== 'racing') return r;
   r.timeLeft -= dt;
+  r.elapsed += dt;
   r.score += speed * RACE.scoreRate * dt;
   // mid-track checkpoint
   if (crossed(prevS, newS, r.checkpoints[1], r.trackLength)) {

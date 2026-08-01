@@ -150,7 +150,7 @@ export function updateHud(hud, race, car, dt, shiftHint = null) {
   if (race.phase === 'countdown') {
     hud.countdown.classList.remove('hidden');
     hud.countdown.textContent = String(Math.ceil(race.countdown));
-  } else if (race.phase === 'racing' && race.countdown === 0 && race.timeLeft > RACE.startTime - 1) {
+  } else if (race.phase === 'racing' && race.elapsed < 1) {
     hud.countdown.classList.remove('hidden');
     hud.countdown.textContent = 'GO!';
   } else {
