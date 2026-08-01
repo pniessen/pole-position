@@ -43,6 +43,8 @@
   color: #35ff6a;
 }
 
+body.touch .screen { pointer-events: auto; }
+
 .screen {
   position: absolute;
   inset: 0;
@@ -115,6 +117,32 @@
 
 .stat-value { color: #fff; white-space: nowrap; }
 
+/* compact layout for short landscape screens (phones) */
+@media (max-height: 520px) {
+  .screen { gap: 6px; }
+  .screen h1 { font-size: clamp(26px, 7vh, 44px); }
+  .screen h2 { font-size: clamp(13px, 3.4vh, 22px); }
+  .select-card {
+    padding: 6px 14px;
+    gap: 3px;
+    width: auto;
+    max-width: 92vw;
+  }
+  .select-card img {
+    width: auto;
+    max-width: 80vw;
+    max-height: 34vh;
+    align-self: center;
+  }
+  .select-name { font-size: clamp(18px, 5.5vh, 30px) !important; }
+  #select-desc { font-size: clamp(11px, 2.8vh, 15px); }
+  #select-stats { gap: 2px; margin-top: 2px; }
+  .stat-row { font-size: clamp(10px, 2.4vh, 14px); }
+  .screen table td { padding: 0 10px; }
+  #minimap { width: 120px; height: 120px; }
+  #tap-kb span { padding: 1.2vh 0; }
+}
+
 .screen table {
   border-collapse: collapse;
   font-size: clamp(14px, 2.2vw, 24px);
@@ -131,6 +159,13 @@
   color: #35ff6a;
 }
 
+body.touch #minimap {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+}
+
 #minimap {
   position: absolute;
   right: 18px;
@@ -139,6 +174,140 @@
   border: 2px solid rgba(255, 255, 255, 0.7);
   border-radius: 6px;
 }
+
+/* --- touch controls --- */
+
+#touch-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  z-index: 5;
+}
+
+#touch-ui .drive {
+  display: none;
+  position: absolute;
+  pointer-events: auto;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(10, 14, 30, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+body.touch.racing #touch-ui .drive { display: flex; }
+
+#touch-ui .drive.held { background: rgba(255, 210, 31, 0.35); }
+
+#tz-left, #tz-right {
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 19vw;
+  height: 24vh;
+  font-size: 9vh;
+}
+#tz-left { left: max(12px, env(safe-area-inset-left)); }
+#tz-right { left: calc(max(12px, env(safe-area-inset-left)) + 20.5vw); }
+
+#tz-brake {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 21vw;
+  height: 16vh;
+  font-size: 3.4vh;
+  letter-spacing: 0.15em;
+  color: #ff8080;
+  border-color: rgba(255, 100, 100, 0.5);
+}
+
+#touch-ui .gearcol {
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 17.5vh);
+  width: 21vw;
+  height: 20vh;
+  flex-direction: column;
+  background: none;
+  border: none;
+  gap: 1.2vh;
+}
+
+#touch-ui .gbtn {
+  pointer-events: auto;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2vh;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(10, 14, 30, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 14px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+#touch-ui .gbtn small { font-size: 1.4vh; color: #ffd21f; }
+#touch-ui .gbtn:active { background: rgba(255, 210, 31, 0.35); }
+
+#rotate-hint {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 20, 0.92);
+  color: #ffd21f;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 22px;
+  letter-spacing: 0.15em;
+  text-shadow: 2px 2px 0 #000;
+  pointer-events: auto;
+  z-index: 20;
+}
+
+#rotate-hint div { font-size: 64px; }
+
+@media (orientation: portrait) {
+  body.touch #rotate-hint { display: flex; }
+}
+
+.tapbtn {
+  color: #6fd6ff;
+  border: 2px solid #6fd6ff;
+  border-radius: 8px;
+  padding: 8px 18px;
+  pointer-events: auto;
+}
+
+#tap-kb {
+  display: none;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  width: min(480px, 92vw);
+  pointer-events: auto;
+}
+
+body.touch #tap-kb { display: grid; }
+
+#tap-kb span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2vh 0;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 6px;
+  font-size: clamp(14px, 2.4vh, 22px);
+  color: #fff;
+}
+
+#tap-kb span.ok { background: rgba(53, 255, 106, 0.25); color: #35ff6a; }
+#tap-kb span:active { background: rgba(255, 210, 31, 0.4); }
 
 #crashflash {
   position: absolute;

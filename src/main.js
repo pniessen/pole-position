@@ -7,6 +7,7 @@ import { buildScene, makeHood } from './scene.js';
 import { createCamera, updateCamera } from './camera.js';
 import { createHud, updateHud, showAttract, showSelect, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
 import { renderCarPhotos, renderTrackThumb } from './showroom.js';
+import { initTouch } from './touch.js';
 import { loadScores, persistScores, submitScore, qualifies } from './storage.js';
 import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic, updateCrowd } from './audio.js';
 
@@ -132,6 +133,7 @@ function refreshMinimap() {
 
 function resize() {
   const w = innerWidth || 1280, h = innerHeight || 720;
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
@@ -152,11 +154,20 @@ const audio = createAudio();
 
 const input = { throttle: 0, brake: 0, steer: 0 };
 const keys = new Set();
+const touch = initTouch({
+  onGearDelta: (d) => { if (race.phase === 'racing') car = shiftGear(car, car.gear + d); },
+});
 function readInput() {
   input.throttle = keys.has('ArrowUp') || keys.has('KeyW') ? 1 : 0;
   input.brake = keys.has('ArrowDown') || keys.has('KeyS') ? 1 : 0;
   input.steer = (keys.has('ArrowLeft') || keys.has('KeyA') ? -1 : 0)
               + (keys.has('ArrowRight') || keys.has('KeyD') ? 1 : 0);
+  if (touch.active) {
+    // auto-throttle while racing; the brake pedal overrides it
+    if (race.phase === 'racing' && !touch.brake) input.throttle = 1;
+    if (touch.brake) { input.brake = 1; input.throttle = 0; }
+    input.steer = Math.max(-1, Math.min(1, input.steer + touch.steer));
+  }
 }
 
 addEventListener('keydown', (e) => {
@@ -180,6 +191,7 @@ addEventListener('keydown', (e) => {
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('pointerdown', () => unlock(audio));
 
 function startFromMenu() {
   hideScreens(hud);
@@ -231,6 +243,7 @@ function update(dt) {
       onRaceEnded();
     }
   }
+  document.body.classList.toggle('racing', race.phase === 'racing' || race.phase === 'countdown');
   updateRivals(traffic);
   updateWorld(dt);
   setStartLights(startLightState(race));

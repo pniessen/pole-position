@@ -39,6 +39,7 @@ export function renderCarPhotos(cars) {
     return url;
   });
 
+  renderer.forceContextLoss(); // release the GL context immediately, not on GC
   renderer.dispose();
   return photos;
 }

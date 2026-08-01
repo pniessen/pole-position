@@ -41,6 +41,10 @@ the top-10 leaderboard (with 3-initial arcade entry) persists between sessions.
 | Enter / Space | Confirm menus, start race |
 | Esc | Back (menus), change setup (after a race) |
 
+**On phones and tablets** (landscape): the throttle is automatic — hold the
+◄ ► pads to steer, hold BRAKE, tap ▲▼ to shift, and tap the menus to browse
+and confirm. High-score initials get an on-screen keyboard.
+
 ## Run it locally
 
 ```bash
