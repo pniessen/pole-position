@@ -43,6 +43,18 @@ describe('startLightState', () => {
   });
 });
 
+describe('lap timing', () => {
+  it('records lastLapTime on each lap crossing', () => {
+    let r = racing();
+    r = updateRace(r, 30, 100, 150, 50);
+    r = updateRace(r, 0.1, 1990, 10, 50); // lap 2
+    expect(r.lastLapTime).toBeCloseTo(30.1, 1);
+    r = updateRace(r, 25, 100, 150, 50);
+    r = updateRace(r, 0.1, 1990, 10, 50); // lap 3
+    expect(r.lastLapTime).toBeCloseTo(25.1, 1);
+  });
+});
+
 describe('race flow', () => {
   it('countdown leads to racing', () => {
     let r = startRace(createRace(L, CPS));

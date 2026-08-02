@@ -15,6 +15,7 @@ export function createHud() {
       <div><span class="label">Score</span><span id="score">000000</span></div>
       <div><span class="label">Time</span><span id="time">75</span></div>
       <div><span class="label">Lap</span><span id="lap">1/${RACE.totalLaps}</span></div>
+      <div id="pos-wrap" class="hidden"><span class="label">Pos</span><span id="pos">8</span></div>
       <div><span class="label">Gear</span><span id="gear">1</span></div>
       <div><span class="label">Speed</span><span id="speed">0</span> km/h</div>
     </div>
@@ -61,6 +62,7 @@ export function createHud() {
   return {
     root,
     score: $('score'), time: $('time'), lap: $('lap'), speed: $('speed'), gear: $('gear'),
+    pos: $('pos'), posWrap: $('pos-wrap'),
     countdown: $('countdown'), banner: $('banner'), crashflash: $('crashflash'),
     attract: $('attract'), attractScores: $('attract-scores'),
     select: $('select'), selectTitle: $('select-title'), selectImage: $('select-image'),
@@ -137,7 +139,7 @@ function scoreTable(scores) {
   return `<table><tbody>${rows}</tbody></table>`;
 }
 
-export function updateHud(hud, race, car, dt, shiftHint = null) {
+export function updateHud(hud, race, car, dt, shiftHint = null, pos = null, draft = 0) {
   hud.score.textContent = String(Math.round(race.score)).padStart(6, '0');
   const t = Math.ceil(race.timeLeft);
   hud.time.textContent = String(t);
@@ -146,6 +148,9 @@ export function updateHud(hud, race, car, dt, shiftHint = null) {
   hud.speed.textContent = String(Math.round(car.speed * 3.6));
   hud.gear.textContent = String(car.gear ?? 1) + (shiftHint === 'up' ? ' ▲' : shiftHint === 'down' ? ' ▼' : '');
   hud.gear.classList.toggle('hint', !!shiftHint);
+  hud.posWrap.classList.toggle('hidden', pos === null);
+  if (pos !== null) hud.pos.textContent = `${pos}/8`;
+  hud.speed.classList.toggle('draft', draft > 0.25);
 
   if (race.phase === 'countdown') {
     hud.countdown.classList.remove('hidden');
@@ -158,7 +163,9 @@ export function updateHud(hud, race, car, dt, shiftHint = null) {
   }
 
   if (race.justCheckpoint || race.justLap) {
-    hud.banner.textContent = race.justLap ? `LAP ${race.lap} — EXTENDED TIME!` : 'EXTENDED TIME!';
+    hud.banner.textContent = race.justLap && race.lastLapTime
+      ? `LAP ${(race.lastLapTime).toFixed(1)}s — EXTENDED TIME!`
+      : 'EXTENDED TIME!';
     hud.bannerTimer = 1.5;
   }
   hud.bannerTimer = Math.max(0, hud.bannerTimer - dt);
@@ -170,10 +177,12 @@ export function updateHud(hud, race, car, dt, shiftHint = null) {
   hud.wasCrashed = crashed;
 }
 
-export function showAttract(hud, scores) {
+export function showAttract(hud, scores, trackName = '') {
   hideScreens(hud);
   hud.attract.classList.remove('hidden');
-  hud.attractScores.innerHTML = scoreTable(scores);
+  hud.attractScores.innerHTML =
+    (scores.length && trackName ? `<div class="board-caption">${trackName} TOP 10</div>` : '') +
+    scoreTable(scores);
 }
 
 // Generic picker screen used for both the car showroom and track select.
@@ -182,7 +191,8 @@ export function showSelect(hud, entry) {
   hideScreens(hud);
   hud.select.classList.remove('hidden');
   hud.selectTitle.textContent = entry.title;
-  hud.selectImage.src = entry.image;
+  hud.selectImage.classList.toggle('hidden', !entry.image);
+  if (entry.image) hud.selectImage.src = entry.image;
   hud.selectName.textContent = entry.name;
   hud.selectDesc.textContent = entry.desc;
   hud.selectStats.innerHTML = entry.stats.map((s) => {
@@ -201,11 +211,11 @@ export function hideScreens(hud) {
   hud.initials.classList.add('hidden');
 }
 
-export function showGameOver(hud, race, scores) {
+export function showGameOver(hud, race, scores, title = null, total = null) {
   hideScreens(hud);
   hud.gameover.classList.remove('hidden');
-  hud.gameoverTitle.textContent = race.phase === 'finished' ? 'RACE COMPLETE!' : 'GAME OVER';
-  hud.finalScore.textContent = `Score: ${String(Math.round(race.score)).padStart(6, '0')}`;
+  hud.gameoverTitle.textContent = title ?? (race.phase === 'finished' ? 'RACE COMPLETE!' : 'GAME OVER');
+  hud.finalScore.textContent = `Score: ${String(Math.round(total ?? race.score)).padStart(6, '0')}`;
   hud.gameoverScores.innerHTML = scoreTable(scores);
 }
 

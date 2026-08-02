@@ -23,6 +23,10 @@
 
 #gear.hint { color: #35ff6a; }
 
+#speed.draft { color: #35ff6a; text-shadow: 0 0 8px rgba(53, 255, 106, 0.8), 2px 2px 0 #000; }
+
+.board-caption { color: #6fd6ff; font-size: clamp(11px, 1.8vw, 16px); margin-bottom: 4px; letter-spacing: 0.12em; }
+
 #hud #time.low { color: #ff4040; animation: blink 0.5s steps(2) infinite; }
 
 @keyframes blink { 50% { opacity: 0.25; } }

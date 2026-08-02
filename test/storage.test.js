@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { submitScore, qualifies } from '../src/storage.js';
+import { submitScore, qualifies, trackRecord, withTrackRecord } from '../src/storage.js';
 
 describe('leaderboard', () => {
   it('inserts sorted descending', () => {
@@ -24,5 +24,25 @@ describe('leaderboard', () => {
     for (let i = 0; i < 10; i++) s = submitScore(s, 'AAA', (i + 1) * 100);
     expect(qualifies(s, 50)).toBe(false);
     expect(qualifies(s, 150)).toBe(true);
+  });
+});
+
+describe('per-track records', () => {
+  it('trackRecord returns an empty record for unknown tracks', () => {
+    const rec = trackRecord({}, 'MONZA');
+    expect(rec.scores).toEqual([]);
+    expect(rec.bestLap).toBe(null);
+    expect(rec.ghost).toBe(null);
+  });
+
+  it('withTrackRecord merges updates immutably per track', () => {
+    let records = {};
+    records = withTrackRecord(records, 'MONZA', { bestLap: 42.5 });
+    records = withTrackRecord(records, 'MONZA', { scores: [{ initials: 'AAA', score: 10 }] });
+    records = withTrackRecord(records, 'MONACO', { bestLap: 61 });
+    expect(trackRecord(records, 'MONZA').bestLap).toBe(42.5);
+    expect(trackRecord(records, 'MONZA').scores.length).toBe(1);
+    expect(trackRecord(records, 'MONACO').bestLap).toBe(61);
+    expect(trackRecord(records, 'MONACO').scores).toEqual([]);
   });
 });

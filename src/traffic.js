@@ -46,6 +46,71 @@ export function updateTraffic(cars, dt, playerS, trackLength, rng = Math.random)
   return cars;
 }
 
+// 0..1 slipstream strength: strongest tucked right behind a rival's tail,
+// fading to nothing by draftMax; requires near-alignment laterally.
+export const DRAFT = { min: 4, max: 28, dx: 1.8 };
+
+export function draftFactor(player, cars, trackLength) {
+  let best = 0;
+  for (const car of cars) {
+    const ahead = circDist(player.s, car.s, trackLength);
+    if (ahead <= DRAFT.min || ahead >= DRAFT.max) continue;
+    if (Math.abs(player.x - car.x) >= DRAFT.dx) continue;
+    best = Math.max(best, 1 - (ahead - DRAFT.min) / (DRAFT.max - DRAFT.min));
+  }
+  return best;
+}
+
+// --- grand prix racers: no respawns, real laps, rubber-banded pace ---
+
+export const RACERS = { count: 7, minFrac: 0.88, maxFrac: 0.97, rubberBand: 0.1, rubberRange: 400 };
+
+export function createRacers(trackLength, playerMax, rng = Math.random) {
+  const racers = [];
+  for (let i = 0; i < RACERS.count; i++) {
+    const lane = LANES[i % LANES.length];
+    const baseSpeed = playerMax * (RACERS.minFrac + rng() * (RACERS.maxFrac - RACERS.minFrac));
+    const s = 12 + i * 11; // staggered grid ahead of the line
+    racers.push({ s, x: lane, lane, baseSpeed, speed: 0, lap: 1, colorIndex: i });
+  }
+  return racers;
+}
+
+function progressOf(lap, s, trackLength) {
+  return (lap - 1) * trackLength + s;
+}
+
+export function updateRacers(racers, dt, playerProgress, trackLength, rng = Math.random) {
+  for (const racer of racers) {
+    // rubber-band toward the player so the pack stays in reach
+    const gap = playerProgress - progressOf(racer.lap, racer.s, trackLength);
+    const band = Math.max(-1, Math.min(1, gap / RACERS.rubberRange));
+    racer.speed = racer.baseSpeed * (1 + RACERS.rubberBand * band);
+    const prevS = racer.s;
+    racer.s = (racer.s + racer.speed * dt) % trackLength;
+    if (prevS > racer.s) racer.lap += 1; // wrapped the line
+    for (const other of racers) {
+      if (other === racer) continue;
+      const ahead = circDist(racer.s, other.s, trackLength);
+      if (ahead > 0 && ahead < TRAFFIC.avoidGap && Math.abs(other.lane - racer.lane) < 1) {
+        racer.lane = racer.lane === 0 ? (rng() < 0.5 ? -TRAFFIC.laneAbs : TRAFFIC.laneAbs) : 0;
+        break;
+      }
+    }
+    racer.x += (racer.lane - racer.x) * Math.min(1, 2 * dt);
+  }
+  return racers;
+}
+
+export function standings(playerLap, playerS, racers, trackLength) {
+  const playerProgress = progressOf(playerLap, playerS, trackLength);
+  let position = 1;
+  for (const racer of racers) {
+    if (progressOf(racer.lap, racer.s, trackLength) > playerProgress) position += 1;
+  }
+  return position;
+}
+
 export function findCollision(player, cars, trackLength) {
   for (const car of cars) {
     const d1 = circDist(player.s, car.s, trackLength);

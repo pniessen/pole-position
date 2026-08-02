@@ -23,6 +23,7 @@ export function startLightState(race) {
 export function createRace(trackLength, checkpoints) {
   return {
     phase: 'attract', timeLeft: RACE.startTime, lap: 1, score: 0, elapsed: 0,
+    lapStart: 0, lastLapTime: null,
     trackLength, checkpoints, countdown: RACE.countdown,
     justCheckpoint: false, justLap: false,
   };
@@ -53,6 +54,8 @@ export function updateRace(race, dt, prevS, newS, speed) {
     r.lap += 1;
     r.timeLeft += RACE.checkpointBonus;
     r.justLap = true;
+    r.lastLapTime = r.elapsed - r.lapStart;
+    r.lapStart = r.elapsed;
     if (r.lap > RACE.totalLaps) { r.phase = 'finished'; r.lap = RACE.totalLaps; }
   }
   if (r.phase === 'racing' && r.timeLeft <= 0) { r.timeLeft = 0; r.phase = 'gameover'; }
