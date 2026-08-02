@@ -12,7 +12,7 @@ import { initTouch } from './touch.js';
 import { loadRecords, persistRecords, submitScore, qualifies, trackRecord, withTrackRecord } from './storage.js';
 import { createLapRecorder, recordLap, finishLap, sampleGhost } from './ghost.js';
 import { createEffects } from './effects.js';
-import { createAudio, unlock, updateEngine, updateRivalEngine, setSkid, playCrash, playJingle, playStartFanfare, startMusic, stopMusic, updateCrowd } from './audio.js';
+import { createAudio, unlock, updateEngine, updateRivalEngine, setSkid, playCrash, playJingle, playStartFanfare, playCountdownBeep, loadVoices, playVoice, startMusic, stopMusic, updateCrowd } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -189,6 +189,7 @@ let car = createCarState();
 let race = createRace(track.length, track.checkpoints);
 let rivals = createTraffic(track.length);
 let finalPos = null;
+let prevLight = 'off'; // last start-light state, for edge-triggered countdown beeps
 
 // ghost state
 let lapRecorder = createLapRecorder();
@@ -220,8 +221,19 @@ function readInput() {
   }
 }
 
-addEventListener('keydown', (e) => {
+// 52XX-style announcer phrases, pre-rendered under public/
+const VOICE_URLS = {
+  qualify: `${import.meta.env.BASE_URL}voice-qualify.wav`,
+  race: `${import.meta.env.BASE_URL}voice-race.wav`,
+};
+
+function unlockAudio() {
   unlock(audio);
+  loadVoices(audio, VOICE_URLS);
+}
+
+addEventListener('keydown', (e) => {
+  unlockAudio();
   if (race.phase === 'attract') startMusic(audio); // chiptune is menu-only
   if (enteringInitials) return;
   if (race.phase === 'attract') {
@@ -248,7 +260,7 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('pointerdown', () => {
-  unlock(audio);
+  unlockAudio();
   if (race.phase === 'attract') startMusic(audio);
 });
 
@@ -283,7 +295,7 @@ function startFromMenu() {
   activeGhost = mode() === 'time' ? trackRecord(records, track.name).ghost : null;
   buildGhostMesh();
   stopMusic(audio); // no BGM during the race — the engine is the soundtrack
-  playStartFanfare(audio);
+  playVoice(audio, mode() === 'race' ? 'race' : 'qualify');
 }
 
 function quitToTitle() {
@@ -308,6 +320,7 @@ function onRaceEnded() {
     if (race.phase === 'finished') {
       total += Math.max(0, (RACERS.count + 1 - finalPos)) * 1500;
       title = `FINISHED P${finalPos}!`;
+      playStartFanfare(audio); // celebratory flourish at the flag
     } else {
       title = `OUT OF TIME — P${finalPos}`;
     }
@@ -423,7 +436,10 @@ function update(dt) {
   updateGhost();
   updateWorld(dt);
   effects.update(dt);
-  setStartLights(startLightState(race));
+  const light = startLightState(race);
+  setStartLights(light);
+  if (light !== prevLight) playCountdownBeep(audio, light); // boop, boop, boop, BEEP
+  prevLight = light;
   updateCamera(camera, track, car, dt, input.steer, carDef.spec);
   const advice = race.phase === 'racing' && !isCrashed(car) ? shiftAdvice(car, carDef.spec) : null;
   touch.setHint?.(advice);

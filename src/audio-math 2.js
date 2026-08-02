@@ -67,26 +67,11 @@ export function engineWaveSamples(length = 512, harmonics = 24) {
     out[i] = v;
     peak = Math.max(peak, Math.abs(v));
   }
-  for (let i = 0; i < length; i++) out[i] /= peak;
-  return crushTo4Bit(out);
-}
-
-// Crush -1..1 samples to 16 amplitude levels (4-bit), in place — the same
-// staircase the 52XX speech chip and the PROM engine loop lived on.
-export function crushTo4Bit(samples) {
-  for (let i = 0; i < samples.length; i++) {
-    const v = Math.max(-1, Math.min(1, samples[i]));
-    samples[i] = Math.round(v * 7.5 - 0.5) / 7.5 + 1 / 15; // 16 levels
+  for (let i = 0; i < length; i++) {
+    const norm = out[i] / peak; // -1..1
+    out[i] = Math.round(norm * 7.5 - 0.5) / 7.5 + 1 / 15; // 16 levels (4-bit)
   }
-  return samples;
-}
-
-// Start-light countdown voices: one low WSG boop per red lamp, a higher held
-// beep on green — the classic arcade grid count.
-export function countdownTone(lightState) {
-  if (lightState === 1 || lightState === 2 || lightState === 3) return { freq: 330, dur: 0.18 };
-  if (lightState === 'go') return { freq: 660, dur: 0.55 };
-  return null;
+  return out;
 }
 
 // WSG-style harmonic recipe (Pac-Man lineage): square-ish organ tone — strong
@@ -97,9 +82,7 @@ export const WSG_HARMONICS = [1, 0.18, 0.55, 0.1, 0.32, 0.06, 0.2, 0.04, 0.11];
 
 // Audible range along-track (metres) and lateral pan scaling for the shared
 // nearest-rival voice.
-// closeCurve > 1 keeps distant cars a faint hum while door-to-door passes
-// swell to full volume.
-export const RIVAL = { range: 45, panSpan: 8, gainMax: 1, closeCurve: 1.7 };
+export const RIVAL = { range: 45, panSpan: 8, gainMax: 1 };
 
 // Signed wrapped distance from `from` to `to` in [-L/2, L/2).
 export function wrappedDelta(from, to, trackLength) {
@@ -121,7 +104,7 @@ export function rivalVoice(player, cars, trackLength, maxSpeed, basePitch = 1) {
     if (d < bestDist) { bestDist = d; best = { car, dx }; }
   }
   if (!best || bestDist >= RIVAL.range) return { gain: 0, pan: 0, rate: enginePlaybackRate(0, basePitch) };
-  const gain = RIVAL.gainMax * Math.pow(1 - bestDist / RIVAL.range, RIVAL.closeCurve);
+  const gain = RIVAL.gainMax * (1 - bestDist / RIVAL.range);
   const pan = Math.max(-1, Math.min(1, best.dx / RIVAL.panSpan));
   const frac = quantizePitch(clamp01(best.car.speed / maxSpeed));
   return { gain, pan, rate: enginePlaybackRate(frac, basePitch) };

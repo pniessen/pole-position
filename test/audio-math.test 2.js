@@ -3,7 +3,7 @@ import {
   PITCH_STEPS, LEVEL_STEPS, RATE_MIN, RATE_MAX, GAIN_MIN, GAIN_MAX,
   quantizeStep, quantizePitch, quantizeLevel, rpmFrac,
   enginePlaybackRate, engineGainValue, engineWaveSamples,
-  WSG_HARMONICS, RIVAL, wrappedDelta, rivalVoice, crushTo4Bit, countdownTone,
+  WSG_HARMONICS, RIVAL, wrappedDelta, rivalVoice,
 } from '../src/audio-math.js';
 import { GEARS, CARS } from '../src/handling.js';
 
@@ -173,43 +173,5 @@ describe('per-car engine pitch hints', () => {
     const suv = CARS.find((c) => c.name.includes('RAV4')).enginePitch;
     expect(f1).toBe(Math.max(...pitches));
     expect(suv).toBe(Math.min(...pitches));
-  });
-});
-
-describe('crushTo4Bit', () => {
-  it('collapses a smooth ramp to at most 16 distinct levels', () => {
-    const ramp = new Float32Array(2000);
-    for (let i = 0; i < ramp.length; i++) ramp[i] = (i / (ramp.length - 1)) * 2 - 1;
-    const seen = new Set(crushTo4Bit(ramp));
-    expect(seen.size).toBeLessThanOrEqual(16);
-    expect(seen.size).toBeGreaterThan(10);
-  });
-
-  it('clamps out-of-range samples and stays within -1..1', () => {
-    const out = crushTo4Bit(new Float32Array([-5, 5, 0]));
-    for (const v of out) {
-      expect(v).toBeGreaterThanOrEqual(-1);
-      expect(v).toBeLessThanOrEqual(1);
-    }
-  });
-});
-
-describe('countdownTone', () => {
-  it('gives the same low boop for each red lamp', () => {
-    const reds = [1, 2, 3].map(countdownTone);
-    expect(new Set(reds.map((t) => t.freq)).size).toBe(1);
-    for (const t of reds) expect(t.dur).toBeLessThan(0.3);
-  });
-
-  it('green is higher-pitched and held longer than the reds', () => {
-    const red = countdownTone(1);
-    const go = countdownTone('go');
-    expect(go.freq).toBeGreaterThan(red.freq);
-    expect(go.dur).toBeGreaterThan(red.dur);
-  });
-
-  it('is silent outside the countdown', () => {
-    expect(countdownTone('off')).toBe(null);
-    expect(countdownTone(undefined)).toBe(null);
   });
 });

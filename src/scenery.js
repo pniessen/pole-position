@@ -146,16 +146,50 @@ export function makeBlimp() {
   finH.position.set(-12, 0, 0);
   const gondola = new THREE.Mesh(new THREE.BoxGeometry(4, 1.4, 1.6), new THREE.MeshLambertMaterial({ color: 0x3a3f4a }));
   gondola.position.set(1, -5.6, 0);
-  blimp.add(body, stripe, finV, finH, gondola);
-  let angle = 0;
+
+  // towed banner: THE DAD SHOW, fluttering on a rope behind the tail
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 192;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f4f1e6';
+  ctx.fillRect(0, 0, 1024, 192);
+  ctx.strokeStyle = '#c81b1b';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(10, 10, 1004, 172);
+  ctx.fillStyle = '#c81b1b';
+  ctx.font = 'bold 118px Arial Black, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('THE DAD SHOW', 512, 104);
+  const bannerTex = new THREE.CanvasTexture(canvas);
+  bannerTex.colorSpace = THREE.SRGBColorSpace;
+  const banner = new THREE.Mesh(
+    new THREE.PlaneGeometry(38, 7.5),
+    new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide })
+  );
+  banner.position.set(-38, -1, 0);
+  const rope = new THREE.Mesh(
+    new THREE.BoxGeometry(6.5, 0.12, 0.12),
+    new THREE.MeshBasicMaterial({ color: 0x555a66 })
+  );
+  rope.position.set(-16, -0.5, 0);
+  rope.rotation.z = 0.08;
+  blimp.add(body, stripe, finV, finH, gondola, banner, rope);
+
+  let angle = 0, flutter = 0;
   const CX = 130, CZ = -280, R = 750, H = 200;
   blimp.userData.update = (dt) => {
     angle += dt * 0.016;
+    flutter += dt;
     const x = CX + Math.cos(angle) * R, z = CZ + Math.sin(angle) * R;
     const nx = CX + Math.cos(angle + 0.01) * R, nz = CZ + Math.sin(angle + 0.01) * R;
     blimp.position.set(x, H, z);
     blimp.lookAt(nx, H, nz);
     blimp.rotateY(Math.PI / 2); // body's long axis is x
+    banner.rotation.x = Math.sin(flutter * 1.8) * 0.1;
+    banner.rotation.y = Math.sin(flutter * 1.1) * 0.06;
+    banner.position.y = -1 + Math.sin(flutter * 1.4) * 0.5;
   };
   blimp.userData.update(0);
   return blimp;

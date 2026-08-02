@@ -60,7 +60,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png}'],
+        globPatterns: ['**/*.{js,css,html,png,wav}'],
       },
     }),
   ],

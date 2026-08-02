@@ -9,7 +9,7 @@
 
 import {
   quantizePitch, rpmFrac, enginePlaybackRate, engineGainValue,
-  engineWaveSamples, WSG_HARMONICS, rivalVoice,
+  engineWaveSamples, WSG_HARMONICS, rivalVoice, crushTo4Bit, countdownTone,
 } from './audio-math.js';
 
 export function createAudio() {
@@ -20,6 +20,7 @@ export function createAudio() {
     skidGain: null, crowdGain: null,
     wsgWave: null, engineBuffer: null,
     musicTimer: null, musicStep: 0,
+    voices: {}, voicesLoading: false,
   };
 }
 
@@ -228,6 +229,48 @@ function wsgNote(audio, freq, start, dur, level = 0.16) {
   osc.connect(g).connect(audio.master);
   osc.start(start);
   osc.stop(start + dur + 0.02);
+}
+
+// One beep per start-light change: low boops on the reds, a held higher
+// note on green, WSG-voiced like the cabinet's countdown.
+export function playCountdownBeep(audio, lightState) {
+  if (!audio.ctx) return;
+  const tone = countdownTone(lightState);
+  if (!tone) return;
+  wsgNote(audio, tone.freq, audio.ctx.currentTime, tone.dur, 0.22);
+}
+
+// Announcer speech, 52XX-style: the phrases are pre-rendered 8 kHz samples;
+// at load we crush them to 4-bit, and playback runs through a narrow
+// PA-horn bandpass for the gritty trackside-tannoy character.
+export function loadVoices(audio, urls) {
+  if (!audio.ctx || audio.voicesLoading) return;
+  audio.voicesLoading = true;
+  for (const [kind, url] of Object.entries(urls)) {
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => audio.ctx.decodeAudioData(buf))
+      .then((decoded) => {
+        crushTo4Bit(decoded.getChannelData(0));
+        audio.voices[kind] = decoded;
+      })
+      .catch(() => { /* run silent */ });
+  }
+}
+
+export function playVoice(audio, kind) {
+  if (!audio.ctx || !audio.voices[kind]) return;
+  const { ctx, master } = audio;
+  const src = ctx.createBufferSource();
+  src.buffer = audio.voices[kind];
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 1100;
+  bp.Q.value = 0.55;
+  const g = ctx.createGain();
+  g.gain.value = 2.4; // narrow bandpass eats level — push it back up
+  src.connect(bp).connect(g).connect(master);
+  src.start();
 }
 
 // Checkpoint/lap jingle — WSG wavetable arpeggio (square-ish organ, not a
