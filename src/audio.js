@@ -1,24 +1,32 @@
-// All-procedural WebAudio voiced after the 1982 Pole Position cabinet.
-// Engine: a tiny looped 4-bit sample pitch-shifted via playbackRate, through
-// FIXED analog-style formant filters (the timbre never tracks RPM — only
-// pitch and volume move, in quantized steps). Jingles: Namco-WSG-style
-// wavetable organ tones. No music during the race — the engine is the
-// soundtrack; the chiptune loop is menu/attract only.
+// All-procedural WebAudio. The engine is a layered synthetic race engine: three
+// detuned copies of a firing-pulse loop through a load-dependent lowpass, with a
+// wind layer, a slow flutter, overrun burble and an upshift dip. The jingles,
+// countdown and menu chiptune stay Namco-WSG retro — no music during the race,
+// the engine is the soundtrack.
 // Everything routes through a master gain; failures leave the game silent
 // but working. All tuning math lives in audio-math.js (pure, tested).
 
 import {
-  quantizePitch, rpmFrac, enginePlaybackRate, engineGainValue,
-  engineWaveSamples, WSG_HARMONICS, rivalVoice, crushTo4Bit, countdownTone,
+  rpmFrac, enginePlaybackRate, engineGainValue,
+  PULSE_SECONDS, firingPulseSamples, ENGINE_LAYERS,
+  CUTOFF, engineCutoff, windGain, flutterStep, burbleBursts, SHIFT_DIP,
+  WSG_HARMONICS, rivalVoice, countdownTone,
 } from './audio-math.js';
+
+// Trackside PA: a wide horn band that leaves the consonants intact, plus one
+// slapback repeat for the size of the venue. The old narrow bandpass plus 4-bit
+// crush is what made the announcer unintelligible.
+const VOICE = { highpass: 250, lowpass: 5000, gain: 1.3, slapback: 0.15, echoLevel: 0.28 };
 
 export function createAudio() {
   return {
     ctx: null, master: null,
-    engineSrc: null, engineGain: null,
+    engineLayers: null, engineGain: null, engineLoad: null, engineShift: null,
+    windGainNode: null,
     rivalSrc: null, rivalGain: null, rivalPan: null,
     skidGain: null, crowdGain: null,
     wsgWave: null, engineBuffer: null,
+    flutter: null, prevThrottle: 0, prevGear: 1,
     musicTimer: null, musicStep: 0,
     voices: {}, voicesLoading: false,
   };
@@ -35,6 +43,7 @@ export function unlock(audio) {
       audio.engineBuffer = makeEngineBuffer(audio.ctx);
       audio.wsgWave = makeWsgWave(audio.ctx);
       buildEngine(audio);
+      buildWind(audio);
       buildRivalEngine(audio);
       buildSkid(audio);
       buildCrowd(audio);
@@ -43,12 +52,10 @@ export function unlock(audio) {
   } catch { /* run silent */ }
 }
 
-// The looped "PROM sample": one harmonically rich cycle, 4-bit quantized.
-// 512 samples ≈ 86 Hz fundamental at 44.1 kHz — playbackRate sweeps it
-// through the engine range while the quantization staircase supplies the
-// wideband buzz for the formant stack to chew on.
+// A 1.5 s loop of cylinder firing pulses — uneven, jittered, overlapping.
+// playbackRate sweeps its ~171 Hz firing rate across the engine range.
 function makeEngineBuffer(ctx) {
-  const samples = engineWaveSamples(512);
+  const samples = firingPulseSamples(Math.round(ctx.sampleRate * PULSE_SECONDS));
   const buf = ctx.createBuffer(1, samples.length, ctx.sampleRate);
   buf.getChannelData(0).set(samples);
   return buf;
@@ -71,34 +78,59 @@ function makeLoopSource(ctx, buffer) {
   return src;
 }
 
-// Player engine: looped sample → two FIXED bandpasses (~1.2 kHz and ~2.2 kHz,
-// summed) → ~950 Hz highpass → gain. The filters NEVER move — that fixed
-// formant is the signature nasal buzz; RPM only changes playbackRate + gain.
+// Player engine: three detuned copies of the firing-pulse loop, summed into a
+// load-dependent lowpass (opens with revs AND throttle), a bit of top-end bite,
+// then a shift-dip gain in series with the main gain so the upshift duck can be
+// scheduled without fighting the per-frame gain updates.
 function buildEngine(audio) {
   const { ctx, master } = audio;
-  const src = makeLoopSource(ctx, audio.engineBuffer);
-  const mix = ctx.createGain();
-  mix.gain.value = 1;
-  for (const freq of [1200, 2200]) {
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = freq;
-    bp.Q.value = 1.6;
-    src.connect(bp).connect(mix);
-  }
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass';
-  hp.frequency.value = 950;
+  const load = ctx.createBiquadFilter();
+  load.type = 'lowpass';
+  load.frequency.value = CUTOFF.min;
+  load.Q.value = 0.9;
+  const bite = ctx.createBiquadFilter();
+  bite.type = 'highshelf';
+  bite.frequency.value = 2400;
+  bite.gain.value = 4;
+  const shift = ctx.createGain();
+  shift.gain.value = 1;
   const gain = ctx.createGain();
   gain.gain.value = 0;
-  mix.connect(hp).connect(gain).connect(master);
-  src.start();
-  audio.engineSrc = src;
+  load.connect(bite).connect(shift).connect(gain).connect(master);
+
+  audio.engineLayers = ENGINE_LAYERS.map((layer) => {
+    const src = makeLoopSource(ctx, audio.engineBuffer);
+    const g = ctx.createGain();
+    g.gain.value = layer.gain;
+    src.connect(g).connect(load);
+    src.start(0, layer.offset * audio.engineBuffer.duration);
+    return { src, detune: layer.detune };
+  });
+  audio.engineLoad = load;
+  audio.engineShift = shift;
   audio.engineGain = gain;
 }
 
-// Shared rival voice: same sample and formant idea (one bandpass is enough
-// for a distant car), stereo-panned by the rival's lateral offset.
+// Wind and road roar: broad filtered noise whose level tracks speed squared.
+function buildWind(audio) {
+  const { ctx, master } = audio;
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer(ctx, 2);
+  src.loop = true;
+  const band = ctx.createBiquadFilter();
+  band.type = 'bandpass';
+  band.frequency.value = 700;
+  band.Q.value = 0.4;
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  src.connect(band).connect(gain).connect(master);
+  src.start();
+  audio.windGainNode = gain;
+}
+
+// Shared rival voice: one layer of the same pulse loop (enough for a car you
+// aren't sitting in), bandpassed to sit behind the player's engine and
+// stereo-panned by the rival's lateral offset.
 function buildRivalEngine(audio) {
   const { ctx, master } = audio;
   const src = makeLoopSource(ctx, audio.engineBuffer);
@@ -160,15 +192,58 @@ export function updateCrowd(audio, level) {
   audio.crowdGain.gain.setTargetAtTime(Math.max(0, Math.min(1, level)) * 0.28, audio.ctx.currentTime, 0.15);
 }
 
-// RPM = speed within the current gear's band. Pitch snaps to 64 steps and
-// volume to 8 levels (short time constants keep the stair-steps audible but
-// click-free). basePitch is the per-car character (F1 revvy, SUV gruff).
-export function updateEngine(audio, speed, gear, spec, basePitch = 1) {
-  if (!audio.engineSrc) return;
+// RPM = speed within the current gear's band. Pitch and volume follow it
+// continuously; throttle controls brightness and level, so the engine answers
+// the right foot and not just the speedometer. basePitch is the per-car
+// character (F1 revvy, SUV gruff).
+export function updateEngine(audio, speed, gear, spec, basePitch = 1, throttle = 1) {
+  if (!audio.engineLayers) return;
   const frac = rpmFrac(speed, gear, spec.maxSpeed);
   const t = audio.ctx.currentTime;
-  audio.engineSrc.playbackRate.setTargetAtTime(enginePlaybackRate(quantizePitch(frac), basePitch), t, 0.02);
-  audio.engineGain.gain.setTargetAtTime(engineGainValue(speed, frac), t, 0.03);
+  audio.flutter = flutterStep(audio.flutter);
+  const rate = enginePlaybackRate(frac, basePitch) * audio.flutter.pitchMul;
+  for (const layer of audio.engineLayers) {
+    layer.src.playbackRate.setTargetAtTime(rate * layer.detune, t, 0.04);
+  }
+  audio.engineGain.gain.setTargetAtTime(
+    engineGainValue(speed, frac, throttle) * audio.flutter.gainMul, t, 0.04);
+  audio.engineLoad.frequency.setTargetAtTime(engineCutoff(frac, throttle), t, 0.05);
+  audio.windGainNode.gain.setTargetAtTime(windGain(speed, spec.maxSpeed), t, 0.15);
+  if (audio.prevThrottle > 0.5 && throttle <= 0.5) playBurble(audio, frac);
+  if (gear > audio.prevGear) playShiftDip(audio);
+  audio.prevThrottle = throttle;
+  audio.prevGear = gear;
+}
+
+// Off-throttle crackle: a short run of lowpassed noise pops.
+function playBurble(audio, frac) {
+  const { ctx, master } = audio;
+  const t0 = ctx.currentTime;
+  for (const pop of burbleBursts(frac)) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer(ctx, 0.1);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 380;
+    lp.Q.value = 3;
+    const g = ctx.createGain();
+    const start = t0 + pop.t;
+    g.gain.setValueAtTime(pop.level, start);
+    g.gain.exponentialRampToValueAtTime(0.001, start + 0.07);
+    src.connect(lp).connect(g).connect(master);
+    src.start(start);
+    src.stop(start + 0.09);
+  }
+}
+
+// Brief duck on its own gain node, so shifting is audible as an event.
+function playShiftDip(audio) {
+  const g = audio.engineShift.gain;
+  const t = audio.ctx.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(1, t);
+  g.linearRampToValueAtTime(SHIFT_DIP.depth, t + SHIFT_DIP.seconds * 0.25);
+  g.linearRampToValueAtTime(1, t + SHIFT_DIP.seconds);
 }
 
 // One shared voice for the nearest rival: pitch from its speed, volume from
@@ -240,9 +315,8 @@ export function playCountdownBeep(audio, lightState) {
   wsgNote(audio, tone.freq, audio.ctx.currentTime, tone.dur, 0.22);
 }
 
-// Announcer speech, 52XX-style: the phrases are pre-rendered 8 kHz samples;
-// at load we crush them to 4-bit, and playback runs through a narrow
-// PA-horn bandpass for the gritty trackside-tannoy character.
+// Announcer speech: full-bandwidth phrases (see tools/make-voices.sh), played
+// back untouched apart from the PA colouration below.
 export function loadVoices(audio, urls) {
   if (!audio.ctx || audio.voicesLoading) return;
   audio.voicesLoading = true;
@@ -250,26 +324,34 @@ export function loadVoices(audio, urls) {
     fetch(url)
       .then((r) => r.arrayBuffer())
       .then((buf) => audio.ctx.decodeAudioData(buf))
-      .then((decoded) => {
-        crushTo4Bit(decoded.getChannelData(0));
-        audio.voices[kind] = decoded;
-      })
+      .then((decoded) => { audio.voices[kind] = decoded; })
       .catch(() => { /* run silent */ });
   }
 }
 
+// Trackside tannoy: wide horn band (keeps the 2–5 kHz consonant energy the old
+// narrow bandpass ate) plus a single slapback repeat for the size of the place.
 export function playVoice(audio, kind) {
   if (!audio.ctx || !audio.voices[kind]) return;
   const { ctx, master } = audio;
   const src = ctx.createBufferSource();
   src.buffer = audio.voices[kind];
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.frequency.value = 1100;
-  bp.Q.value = 0.55;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = VOICE.highpass;
+  hp.Q.value = 0.7;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = VOICE.lowpass;
+  lp.Q.value = 0.7;
   const g = ctx.createGain();
-  g.gain.value = 2.4; // narrow bandpass eats level — push it back up
-  src.connect(bp).connect(g).connect(master);
+  g.gain.value = VOICE.gain;
+  src.connect(hp).connect(lp).connect(g).connect(master);
+  const delay = ctx.createDelay(1);
+  delay.delayTime.value = VOICE.slapback;
+  const echo = ctx.createGain();
+  echo.gain.value = VOICE.echoLevel;
+  g.connect(delay).connect(echo).connect(master);
   src.start();
 }
 

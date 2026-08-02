@@ -450,8 +450,9 @@ function update(dt) {
   updateMinimap(hud, posAt(track, car.s), rivals.map((c) => posAt(track, c.s)));
   setRainFx(hud, track.theme.weather === 'rain' && (race.phase === 'racing' || race.phase === 'countdown'));
   updateRainFx(hud, dt);
-  // engine revs climb within the current gear and drop on upshift
-  updateEngine(audio, car.speed, car.gear, carDef.spec, carDef.enginePitch);
+  // engine revs climb within the current gear and drop on upshift; throttle
+  // drives brightness and the off-throttle burble
+  updateEngine(audio, car.speed, car.gear, carDef.spec, carDef.enginePitch, input.throttle);
   updateRivalEngine(audio, car, race.phase === 'racing' ? rivals : [], track.length, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);
   updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);

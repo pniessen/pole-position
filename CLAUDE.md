@@ -8,7 +8,7 @@ built with Vite, tested with Vitest. Live at **https://pniessen.github.io/pole-p
 
 ```bash
 npm run dev      # vite dev server (reads PORT env; strictPort false)
-npm test         # vitest — 172 tests, all pure-logic modules; must stay green
+npm test         # vitest — 188 tests, all pure-logic modules; must stay green
 npm run build    # production build incl. PWA service worker
 ```
 
@@ -35,7 +35,7 @@ new gameplay logic goes in a pure module with tests first, rendering second.
 | `src/traffic.js` | Time-Attack traffic (respawning) + Grand Prix `RACERS` (7, real laps, rubber-banded, never respawn), `standings`, `draftFactor` (slipstream), `findCollision` |
 | `src/ghost.js` | Best-lap recorder/sampler (0.1 s cadence, linear interp) |
 | `src/storage.js` | Per-track records in localStorage (`polePosition.records.v1`): top-10 scores, best lap, ghost |
-| `src/audio-math.js` | Pure audio math: quantizers, RPM mapping, engine wave, rival voice, countdown tones, 4-bit crush |
+| `src/audio-math.js` | Pure audio math: firing-pulse wavetable, RPM/pitch/gain mapping, load cutoff, wind, flutter, burble, rival voice, countdown tones. Every tuning knob is a named export |
 | `src/audio.js` | WebAudio node graph (thin, untested). See "Audio" below |
 | `src/scene.js` | `buildScene`, road/terrain geometry, `atmosphere(theme)` (sunset/night/rain/mist), rival car meshes, hoods |
 | `src/scenery.js` | Sky dome, clouds, birds, blimp (+ THE DAD SHOW banner), start-light gantry, grandstands (waving flags, camera flashes), `makeEnvironment` per theme (forest/urban/stadium/hills/plains/coast), props |
@@ -59,27 +59,49 @@ failing test → minimal code → green → commit.
 - Curbs ridge up 0.22 m at the road edges so bends stay visible edge-on across
   flat terrain (fixes the "gap in the track" illusion).
 
-## Audio (modeled on the real 1982 cabinet)
+## Audio
 
-- **Engine**: looped 4-bit wavetable buffer (512-sample cycle), pitch = playbackRate
-  from RPM (`rpmFrac` = speed within current gear's band), through **fixed** formant
-  filters — bandpasses 1.2 kHz + 2.2 kHz, highpass 950 Hz. Filters NEVER track RPM;
-  only pitch/volume move, quantized to 64 pitch steps / 8 volume levels.
+The engine and announcer were originally faithful reproductions of the 1982 cabinet
+(4-bit crush, 64 pitch steps, fixed formants). That made the announcer unintelligible
+and the engine a drone, so both were modernized — see
+`docs/superpowers/specs/2026-08-02-audio-overhaul-design.md`. The jingles, countdown,
+crash stack and menu chiptune are still deliberately retro.
+
+- **Engine**: three detuned copies (`ENGINE_LAYERS`) of a 1.5 s **firing-pulse loop**
+  (`firingPulseSamples` — decaying cylinder bursts on a 4-pulse uneven-firing `bank`
+  pattern, with per-pulse timing/amplitude `jitter`; the jitter is what stops it
+  sounding looped, and the detune beating is what makes it sound like an engine).
+  Base firing rate ≈ 171 Hz; `playbackRate` sweeps it continuously from RPM
+  (`rpmFrac` = speed within current gear's band). **No quantizers** — stair-stepped
+  pitch was a large part of the drone.
+- **Load response** is the main anti-monotony lever: `updateEngine` takes `throttle`,
+  and `engineCutoff(frac, throttle)` opens a lowpass with revs *and* right foot, so
+  on-throttle is bright and hard while the overrun goes dark and quiet
+  (`OFF_THROTTLE_GAIN`).
+- Also layered in: `windGain` (speed², under the engine), `flutterStep` (bounded
+  random walk on pitch/gain so a held speed never freezes), `burbleBursts`
+  (off-throttle crackle, fired on the throttle-release edge above `BURBLE.minFrac`),
+  and `SHIFT_DIP` (brief duck on upshift, on its own gain node so it doesn't fight
+  the per-frame gain updates).
 - Per-car `enginePitch` in `CARS` (F1 1.3 highest → RAV4 0.8 lowest).
-- **Rival voice**: one shared voice for the nearest car, proximity gain
-  (curved, `RIVAL.closeCurve`), stereo-panned by lateral offset. Volume knobs:
-  `* 0.34` in `updateRivalEngine` and `RIVAL.closeCurve` in audio-math.js.
+- **Rival voice**: one shared voice for the nearest car using a single layer of the
+  same pulse loop, proximity gain (curved, `RIVAL.closeCurve`), stereo-panned by
+  lateral offset. Volume knobs: `* 0.34` in `updateRivalEngine` and
+  `RIVAL.closeCurve` in audio-math.js.
 - **Crash**: impact noise burst → lowpassed rumble → highpassed sizzle.
-- **Announcer**: "Prepare to qualify!" / "Prepare to race!" — pre-rendered with
-  macOS `say -v Fred -r 145`, converted `afconvert -f WAVE -d LEI16@8000 -c 1`
-  to `public/voice-*.wav`, crushed to 4-bit at load, played through a 1.1 kHz
-  bandpass (PA-horn grit). Regenerate the same way if phrases change.
+- **Announcer**: "Prepare to qualify!" / "Prepare to race!" — regenerate with
+  **`tools/make-voices.sh`** (macOS `say -v Daniel`, 22.05 kHz). Played through a wide
+  PA-horn band (250 Hz–5 kHz) plus one slapback repeat — the `VOICE` constants in
+  audio.js. Do NOT reintroduce the narrow bandpass or the 4-bit crush; stacking those
+  on 8 kHz Fred is exactly what made the words unintelligible.
 - **Countdown**: WSG boop per red lamp, held higher beep on green — edge-triggered
   in main.js on `startLightState` changes (`prevLight`).
 - **No music during the race** (authentic): chiptune loop is menu/attract only.
   Jingles/fanfare use a WSG-style `PeriodicWave` (`WSG_HARMONICS`).
 - Audio unlocks on first user gesture (`unlockAudio()` in main.js — also kicks
-  off voice fetch/decode). All node-graph code fails silent via try/catch.
+  off voice fetch/decode). All node-graph code fails silent via try/catch — which
+  means a broken graph is *invisible*; verify by rendering it through an
+  `OfflineAudioContext` in the browser pane rather than trusting a clean console.
 
 ## Headless testing & dev tooling
 
@@ -134,6 +156,10 @@ failing test → minimal code → green → commit.
 7. Audio-authenticity overhaul (researched the real 1982 hardware first, then
    implemented — see "Audio" above); rival volume boost; countdown beeps;
    Fred-voiced announcer; blimp banner.
+8. Audio listenability pass, reversing part of (7) where authenticity hurt: the
+   layered firing-pulse engine with throttle-dependent timbre, wind, flutter,
+   burble and shift dip, and a full-bandwidth Daniel-voiced announcer through a
+   wide PA band. Quantizers and the 4-bit crush were deleted, not just bypassed.
 
 ## Working conventions
 

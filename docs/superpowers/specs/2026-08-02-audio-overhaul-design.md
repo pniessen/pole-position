@@ -151,3 +151,40 @@ pitch/gain/cutoff/flutter and fires burbles and the upshift dip.
 
 Jingles, countdown beeps, crash stack, menu chiptune, crowd noise, skid noise — all
 unchanged.
+
+## Deviations, as built
+
+- **`enginePitchSmooth` was not added.** `enginePlaybackRate` never quantized on its
+  own — the caller did. Making pitch continuous only meant dropping the
+  `quantizePitch` call, so a second near-identical function would have been dead
+  weight.
+- **The quantizers and the 4-bit crush were deleted, not merely bypassed.** With the
+  voice no longer crushed and the engine no longer quantized, `quantizeStep`,
+  `quantizePitch`, `quantizeLevel`, `PITCH_STEPS`, `LEVEL_STEPS`, `crushTo4Bit` and
+  `engineWaveSamples` had no remaining callers. Keeping exported, tested functions
+  that nothing calls is just dead code; git history has them if the retro texture is
+  ever wanted back.
+- **`PULSE.bank` was added** — a fixed 4-pulse amplitude pattern giving the uneven
+  firing lope of a crossplane V8. The spec only called for random jitter; the bank
+  pattern supplies a periodic sub-harmonic rumble that pure randomness does not.
+- **`flutterStep`'s noise is scaled** (`FLUTTER_NOISE`) so the AR(1) walk actually
+  roams most of its range. The naive version's stationary spread was about a tenth
+  of the configured depth, making the flutter inaudible — caught by a test.
+- **The upshift dip got its own gain node** (`engineShift`) rather than scheduling on
+  the main engine gain, which is driven by `setTargetAtTime` every frame and would
+  have fought the scheduled ramps.
+- **Voice assets are 22.05 kHz mono via `tools/make-voices.sh`** using `Daniel`
+  (en_GB). `Alex` is not installed on this machine.
+
+## Verified
+
+- 188 tests green (`npm test`).
+- Graph construction and output confirmed by rendering `audio.js` through an
+  `OfflineAudioContext` in the browser pane — necessary because `unlock()` swallows
+  build errors, so a clean console proves nothing.
+- Drone measurement, old vs new, at identical speed and identical output RMS
+  (0.0923): window-to-window level variation rose from **2.6% to 11.5%**.
+- Load response measured: at the same speed, lifting drops RMS 0.100 → 0.079 and
+  high-frequency energy 0.0212 → 0.0158.
+- Full race path driven via `window.__game` (accelerate, two upshifts, lift) with no
+  console errors; both voice files fetch 200.
