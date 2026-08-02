@@ -12,7 +12,7 @@ import { initTouch } from './touch.js';
 import { loadRecords, persistRecords, submitScore, qualifies, trackRecord, withTrackRecord } from './storage.js';
 import { createLapRecorder, recordLap, finishLap, sampleGhost } from './ghost.js';
 import { createEffects } from './effects.js';
-import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic, updateCrowd } from './audio.js';
+import { createAudio, unlock, updateEngine, updateRivalEngine, setSkid, playCrash, playJingle, playStartFanfare, startMusic, stopMusic, updateCrowd } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -222,6 +222,7 @@ function readInput() {
 
 addEventListener('keydown', (e) => {
   unlock(audio);
+  if (race.phase === 'attract') startMusic(audio); // chiptune is menu-only
   if (enteringInitials) return;
   if (race.phase === 'attract') {
     menuKey(e.code);
@@ -242,10 +243,14 @@ addEventListener('keydown', (e) => {
     rivals = createTraffic(track.length);
     race = createRace(track.length, track.checkpoints);
     openModeSelect();
+    startMusic(audio);
   }
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('pointerdown', () => unlock(audio));
+addEventListener('pointerdown', () => {
+  unlock(audio);
+  if (race.phase === 'attract') startMusic(audio);
+});
 
 function buildGhostMesh() {
   if (ghostMesh) {
@@ -277,11 +282,12 @@ function startFromMenu() {
   lapRecorder = createLapRecorder();
   activeGhost = mode() === 'time' ? trackRecord(records, track.name).ghost : null;
   buildGhostMesh();
-  startMusic(audio);
+  stopMusic(audio); // no BGM during the race — the engine is the soundtrack
+  playStartFanfare(audio);
 }
 
 function quitToTitle() {
-  stopMusic(audio);
+  startMusic(audio);
   keys.clear();
   car = createCarState();
   rivals = createTraffic(track.length);
@@ -409,7 +415,6 @@ function update(dt) {
     if (race.justLap) onLapCompleted();
     if (race.justCheckpoint || race.justLap) playJingle(audio);
     if (race.phase === 'gameover' || race.phase === 'finished') {
-      stopMusic(audio);
       onRaceEnded();
     }
   }
@@ -430,7 +435,8 @@ function update(dt) {
   setRainFx(hud, track.theme.weather === 'rain' && (race.phase === 'racing' || race.phase === 'countdown'));
   updateRainFx(hud, dt);
   // engine revs climb within the current gear and drop on upshift
-  updateEngine(audio, car.speed / GEARS[car.gear - 1].cap, carDef.spec.maxSpeed);
+  updateEngine(audio, car.speed, car.gear, carDef.spec, carDef.enginePitch);
+  updateRivalEngine(audio, car, race.phase === 'racing' ? rivals : [], track.length, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);
   updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);
   setSkid(audio, (Math.abs(input.steer) > 0.9 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
