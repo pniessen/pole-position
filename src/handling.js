@@ -10,36 +10,42 @@ export const ROAD_HALF_WIDTH = 7.5;
 export const CARS = [
   {
     name: 'E60 M5',
+    enginePitch: 1.0,
     desc: 'V10 sedan — top speed monster',
     spec: { ...CAR, maxSpeed: 82, accel: 27, steerSpeed: 15, offroadMax: 28 },
     hood: { style: 'sedan', color: 0x23262e },
   },
   {
     name: 'E85 Z4 M',
+    enginePitch: 1.08,
     desc: 'Roadster — quickest hands',
     spec: { ...CAR, maxSpeed: 78, accel: 26, steerSpeed: 18.5, offroadMax: 28, eyeHeight: 1.0 },
     hood: { style: 'roadster', color: 0x1d2028 },
   },
   {
     name: 'E46 325xi Wagon',
+    enginePitch: 0.88,
     desc: 'AWD estate — unstoppable on grass',
     spec: { ...CAR, maxSpeed: 70, accel: 20, steerSpeed: 15, offroadMax: 45, offroadDecel: 25 },
     hood: { style: 'wagon', color: 0xb31414 },
   },
   {
     name: 'Classic F1',
+    enginePitch: 1.3,
     desc: 'Open wheels — fast and fragile',
     spec: { ...CAR, maxSpeed: 88, accel: 32, steerSpeed: 17, offroadMax: 20, offroadDecel: 60, eyeHeight: 0.85 },
     hood: { style: 'open-wheel', color: 0xf2f2f2 },
   },
   {
     name: 'Lotus Elise',
+    enginePitch: 1.12,
     desc: 'Featherweight roadster — corners on rails',
     spec: { ...CAR, maxSpeed: 76, accel: 29, steerSpeed: 19.5, offroadMax: 26, eyeHeight: 0.95 },
     hood: { style: 'roadster', color: 0xc9ccd4 },
   },
   {
     name: 'Toyota RAV4',
+    enginePitch: 0.8,
     desc: 'Compact SUV — sits tall, shrugs off grass',
     spec: { ...CAR, maxSpeed: 68, accel: 21, steerSpeed: 14.5, offroadMax: 42, offroadDecel: 26, eyeHeight: 1.4 },
     hood: { style: 'suv', color: 0x83878d },
