@@ -1,16 +1,17 @@
 import * as THREE from 'three';
-import { createTrack, curvatureAt, posAt, countTurns, TRACKS } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, CARS, GEARS } from './handling.js';
+import { createTrack, curvatureAt, posAt, worldPose, countTurns, TRACKS } from './track.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, weatherSpec, CARS, GEARS } from './handling.js';
 import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision, draftFactor, createRacers, updateRacers, standings, RACERS } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
 import { makeCarModel } from './carmodels.js';
 import { createCamera, updateCamera } from './camera.js';
-import { createHud, updateHud, showAttract, showSelect, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap } from './hud.js';
+import { createHud, updateHud, showAttract, showSelect, hideScreens, showGameOver, showInitialsEntry, setMinimapTrack, updateMinimap, setRainFx, updateRainFx } from './hud.js';
 import { renderCarPhotos, renderTrackThumb } from './showroom.js';
 import { initTouch } from './touch.js';
 import { loadRecords, persistRecords, submitScore, qualifies, trackRecord, withTrackRecord } from './storage.js';
 import { createLapRecorder, recordLap, finishLap, sampleGhost } from './ghost.js';
+import { createEffects } from './effects.js';
 import { createAudio, unlock, updateEngine, setSkid, playCrash, playJingle, startMusic, stopMusic, updateCrowd } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -19,6 +20,7 @@ document.body.appendChild(renderer.domElement);
 let trackIndex = 0;
 let track = createTrack(trackIndex);
 let { scene, updateRivals, updateWorld, setStartLights } = buildScene(track);
+let effects = createEffects(scene);
 let carIndex = 0;
 let carDef = CARS[carIndex];
 let hood = makeHood(carDef.hood);
@@ -41,6 +43,7 @@ function setTrack(index) {
   disposeScene(scene);
   track = createTrack(trackIndex);
   ({ scene, updateRivals, updateWorld, setStartLights } = buildScene(track));
+  effects = createEffects(scene);
   scene.add(camera);
   car = createCarState();
   rivals = createTraffic(track.length);
@@ -366,9 +369,10 @@ function update(dt) {
     const prevS = car.s;
     if (race.phase === 'racing') {
       draft = draftFactor(car, rivals, track.length);
+      const base = weatherSpec(carDef.spec, track.theme.weather);
       const spec = draft > 0
-        ? { ...carDef.spec, accel: carDef.spec.accel * (1 + 0.5 * draft), maxSpeed: carDef.spec.maxSpeed * (1 + 0.06 * draft) }
-        : carDef.spec;
+        ? { ...base, accel: base.accel * (1 + 0.5 * draft), maxSpeed: base.maxSpeed * (1 + 0.06 * draft) }
+        : base;
       car = stepCar(car, input, curvatureAt(track, car.s), track.length, dt, spec);
       if (mode() === 'race') {
         const progress = (race.lap - 1) * track.length + car.s;
@@ -381,6 +385,22 @@ function update(dt) {
         if (hit) {
           car = crashCar(car);
           playCrash(audio);
+          const at = worldPose(track, car.s, car.x).position;
+          for (let i = 0; i < 7; i++) effects.addSmoke(at, 1.2 + Math.random() * 1.2);
+        }
+      }
+      // tire marks while sliding hard, off-line, or spinning out
+      const sliding = (Math.abs(input.steer) > 0.85 && car.speed > 0.6 * carDef.spec.maxSpeed)
+        || (isOffroad(car) && car.speed > 8)
+        || (isCrashed(car) && car.crashTimer > carDef.spec.crashDuration - 0.5);
+      if (sliding) {
+        const rear = car.s - 1.4;
+        for (const off of [-0.8, 0.8]) {
+          const pose = worldPose(track, rear, car.x + off);
+          effects.addSkid(pose.position, pose.tangent);
+        }
+        if (isCrashed(car) && Math.random() < 0.4) {
+          effects.addSmoke(worldPose(track, car.s, car.x).position, 1);
         }
       }
       recordLap(lapRecorder, dt, car.s, car.x);
@@ -397,6 +417,7 @@ function update(dt) {
   updateRivals(rivals);
   updateGhost();
   updateWorld(dt);
+  effects.update(dt);
   setStartLights(startLightState(race));
   updateCamera(camera, track, car, dt, input.steer, carDef.spec);
   const advice = race.phase === 'racing' && !isCrashed(car) ? shiftAdvice(car, carDef.spec) : null;
@@ -406,6 +427,8 @@ function update(dt) {
     : null;
   updateHud(hud, race, car, dt, advice, pos, draft);
   updateMinimap(hud, posAt(track, car.s), rivals.map((c) => posAt(track, c.s)));
+  setRainFx(hud, track.theme.weather === 'rain' && (race.phase === 'racing' || race.phase === 'countdown'));
+  updateRainFx(hud, dt);
   // engine revs climb within the current gear and drop on upshift
   updateEngine(audio, car.speed / GEARS[car.gear - 1].cap, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);

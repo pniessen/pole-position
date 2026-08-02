@@ -417,6 +417,12 @@ body.touch #tap-kb { display: grid; }
 #tap-kb span.ok { background: rgba(53, 255, 106, 0.25); color: #35ff6a; }
 #tap-kb span:active { background: rgba(255, 210, 31, 0.4); }
 
+#rainfx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 #crashflash {
   position: absolute;
   inset: 0;

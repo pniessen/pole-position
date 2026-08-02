@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CAR, CARS, GEARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice } from '../src/handling.js';
+import { CAR, CARS, GEARS, ROAD_HALF_WIDTH, createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, weatherSpec } from '../src/handling.js';
 
 const IDLE = { throttle: 0, brake: 0, steer: 0 };
 const GAS = { throttle: 1, brake: 0, steer: 0 };
@@ -138,6 +138,14 @@ describe('stepCar', () => {
     expect(shiftAdvice({ ...createCarState(), gear: 4, speed: CAR.maxSpeed })).toBe(null);
     // 1st gear standstill → nothing below
     expect(shiftAdvice({ ...createCarState(), gear: 1, speed: 0 })).toBe(null);
+  });
+
+  it('weatherSpec: rain cuts grip and braking, clear is untouched', () => {
+    const wet = weatherSpec(CAR, 'rain');
+    expect(wet.centrifugal).toBeGreaterThan(CAR.centrifugal);
+    expect(wet.brakeDecel).toBeLessThan(CAR.brakeDecel);
+    expect(weatherSpec(CAR, undefined)).toBe(CAR);
+    expect(weatherSpec(CAR, 'mist')).toBe(CAR);
   });
 
   it('Lotus Elise has the best handling in the roster', () => {

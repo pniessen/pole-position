@@ -19,9 +19,13 @@ export const RIVAL_COLORS = [0xff5533, 0xffcc22, 0x22ccff, 0xcc44ff, 0x44ff77, 0
 const BILLBOARD_TEXTS = ['THE DAD SHOW', 'TURBO', 'THE DAD SHOW', 'SPEED UP', 'THE DAD SHOW', 'GRIP+', 'NITRO COLA', '500 MPH RADIO'];
 const BILLBOARD_BG = ['#1a56c4', '#d92222', '#e8a013', '#15881e', '#7722cc', '#0b0b0b', '#d92222', '#1a56c4'];
 
-function buildRoad(track, theme) {
+function buildRoad(track, theme, roadShade = 1) {
   // Non-indexed geometry with flat per-face colors: crisp retro segments,
   // no vertex-color bleeding between road, centerline, and rumble strips.
+  const ROAD = ROADCOL.clone().multiplyScalar(roadShade);
+  const RUM_A = RUMBLE_A.clone().multiplyScalar(Math.min(1, roadShade + 0.12));
+  const RUM_B = RUMBLE_B.clone().multiplyScalar(Math.min(1, roadShade + 0.12));
+  const CLINE = LINE.clone().multiplyScalar(Math.min(1, roadShade + 0.12));
   const step = 3;
   const half = ROAD_HALF_WIDTH;
   const rumble = half + 2.0;
@@ -58,10 +62,10 @@ function buildRoad(track, theme) {
     for (let j = 0; j < offs.length - 1; j++) {
       const isRumble = j === 0 || j === offs.length - 2;
       let c;
-      if (isRumble) c = rumbleSeg ? RUMBLE_A : RUMBLE_B;
-      else if (j === CENTER_COL && seg) c = LINE;
+      if (isRumble) c = rumbleSeg ? RUM_A : RUM_B;
+      else if (j === CENTER_COL && seg) c = CLINE;
       else {
-        scratch.copy(ROADCOL).multiplyScalar(shade * (WEAR_COLS.has(j) ? 0.86 : 1));
+        scratch.copy(ROAD).multiplyScalar(shade * (WEAR_COLS.has(j) ? 0.86 : 1));
         c = scratch;
       }
       const a = ringPos[i][j], b = ringPos[i + 1][j];
@@ -248,18 +252,59 @@ export function makeHood(def = { style: 'sedan', color: 0xc41111 }) {
   return hood;
 }
 
+// Resolves a track theme + its time-of-day/weather into concrete sky, fog,
+// light, and road-shade values.
+function atmosphere(theme) {
+  const base = {
+    sky: theme.sky, horizon: theme.horizon ?? theme.sky,
+    fogNear: 280, fogFar: 1000,
+    ambient: 0.85, ambientColor: 0xffffff, sunLight: 1.1, sunLightColor: 0xfff2cc,
+    sunVisible: true, sunColor: theme.sunColor, sunSize: theme.sunSize,
+    sunPos: undefined, stars: false, roadShade: 1,
+  };
+  if (theme.time === 'sunset') {
+    return { ...base,
+      sky: 0xc4653f, horizon: 0xffb36b, sunColor: 0xffc27a, sunSize: 95,
+      sunPos: [1400, 260, -900], ambient: 0.7, ambientColor: 0xffd9b0,
+      sunLight: 0.9, sunLightColor: 0xff9955, roadShade: 0.92,
+    };
+  }
+  if (theme.time === 'night') {
+    return { ...base,
+      sky: 0x0c1226, horizon: 0x1c2c4e, sunVisible: false, stars: true,
+      ambient: 0.5, ambientColor: 0xaabbff, sunLight: 0.45, sunLightColor: 0xbfd0ff,
+      fogFar: 850, roadShade: 0.8,
+    };
+  }
+  if (theme.weather === 'rain') {
+    return { ...base,
+      sky: 0x8b959e, horizon: 0xb4bcc4, sunVisible: false,
+      ambient: 0.78, sunLight: 0.5, sunLightColor: 0xdde4ea,
+      fogNear: 200, fogFar: 700, roadShade: 0.72,
+    };
+  }
+  if (theme.weather === 'mist') {
+    return { ...base,
+      sky: 0xa9bdb4, horizon: 0xd3ded6, sunVisible: false,
+      ambient: 0.82, sunLight: 0.6, fogNear: 120, fogFar: 520, roadShade: 0.9,
+    };
+  }
+  return base;
+}
+
 export function buildScene(track) {
   const theme = track.theme || { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true };
+  const atmo = atmosphere(theme);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(theme.horizon ?? theme.sky);
-  scene.fog = new THREE.Fog(theme.horizon ?? theme.sky, 280, 1000);
+  scene.background = new THREE.Color(atmo.horizon);
+  scene.fog = new THREE.Fog(atmo.horizon, atmo.fogNear, atmo.fogFar);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-  const sun = new THREE.DirectionalLight(0xfff2cc, 1.1);
+  scene.add(new THREE.AmbientLight(atmo.ambientColor, atmo.ambient));
+  const sun = new THREE.DirectionalLight(atmo.sunLightColor, atmo.sunLight);
   sun.position.set(300, 400, 100);
   scene.add(sun);
 
-  scene.add(makeSkyDome(theme));
+  scene.add(makeSkyDome(atmo));
 
   // terrain with subtle color patches (mowed-field feel)
   const terrainGeo = new THREE.CircleGeometry(2500, 64);
@@ -281,7 +326,7 @@ export function buildScene(track) {
   scene.add(terrain);
 
   // road
-  scene.add(buildRoad(track, theme));
+  scene.add(buildRoad(track, theme, atmo.roadShade));
 
   // surroundings matched to the track's character (forest, urban, stadium, …)
   scene.add(makeEnvironment(track, theme));
@@ -304,16 +349,17 @@ export function buildScene(track) {
   scene.add(makeArch(track, track.checkpoints[1], 0xf2c522, 'CHECKPOINT'));
 
   // spectacle: sky traffic, grandstands, start lights, theme flora
-  const clouds = makeClouds();
-  const birds = makeBirds();
-  const blimp = makeBlimp();
   const startLights = makeStartLights(track);
-  scene.add(clouds, birds, blimp, startLights, makeGrandstands(track), makeProps(track, theme));
+  const cloudColor = atmo.stars ? 0x232c48 : atmo.sunVisible === false ? 0xc9ced4 : 0xffffff;
+  scene.add(makeClouds(10, cloudColor), makeBirds(), makeBlimp(), startLights, makeGrandstands(track), makeProps(track, theme));
+
+  // anything that registered a userData.update (clouds, birds, blimp,
+  // grandstand flags/flashes…) gets ticked each frame
+  const animated = [];
+  scene.traverse((obj) => { if (obj.userData?.update) animated.push(obj); });
 
   function updateWorld(dt) {
-    clouds.userData.update(dt);
-    birds.userData.update(dt);
-    blimp.userData.update(dt);
+    for (const obj of animated) obj.userData.update(dt);
   }
 
   const setStartLights = (state) => startLights.userData.setState(state);

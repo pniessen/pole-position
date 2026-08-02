@@ -57,7 +57,7 @@ export const TRACKS = [
   {
     name: 'NORDSCHLEIFE',
     tagline: 'The Green Hell — endless corners through the Eifel forest',
-    theme: { sky: 0x7fb8e8, grass: 0x2e7d32, mountain: 0x5c7266, snow: false, horizon: 0xdae8dc, prop: 'pine', environment: 'forest' },
+    theme: { sky: 0x7fb8e8, grass: 0x2e7d32, mountain: 0x5c7266, snow: false, horizon: 0xdae8dc, prop: 'pine', environment: 'forest', weather: 'mist' },
     points: [
       [0, 6, 0], [150, 7, -10], [260, 9, -40], [310, 10, -110],
       [260, 11, -180], [330, 12, -250], [430, 13, -300], [540, 12, -260],
@@ -71,7 +71,7 @@ export const TRACKS = [
   {
     name: 'SPA-FRANCORCHAMPS',
     tagline: 'Eau Rouge flat out — if you dare',
-    theme: { sky: 0x8cb8d8, grass: 0x3a8f3f, mountain: 0x66788a, snow: false, horizon: 0xe2eaf0, prop: 'pine', environment: 'forest' },
+    theme: { sky: 0x8cb8d8, grass: 0x3a8f3f, mountain: 0x66788a, snow: false, horizon: 0xe2eaf0, prop: 'pine', environment: 'forest', weather: 'rain' },
     points: [
       [0, 9, 0], [150, 9, -3], [205, 8, 40], [175, 8, 105],
       [60, 4, 130], [-60, 1, 165], [-95, 3, 95], [-130, 6, 20],
@@ -84,7 +84,7 @@ export const TRACKS = [
   {
     name: 'MONZA',
     tagline: 'The Temple of Speed — chicanes and flat-out straights',
-    theme: { sky: 0x74baff, grass: 0x4aa54a, mountain: 0x8795a8, snow: false, horizon: 0xdcecff, prop: 'pine', environment: 'park' },
+    theme: { sky: 0x74baff, grass: 0x4aa54a, mountain: 0x8795a8, snow: false, horizon: 0xdcecff, prop: 'pine', environment: 'park', time: 'sunset' },
     points: [
       [0, 0, 0], [260, 0, 0], [495, 0, 0], [535, 0, -4],
       [575, 0, -20], [615, 0, -8], [700, 0, -30], [800, 0, -120],
@@ -123,7 +123,7 @@ export const TRACKS = [
   {
     name: 'DAYTONA',
     tagline: 'High-banked superspeedway — draft or be drafted',
-    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x8795a8, snow: false, horizon: 0xd8ecff, prop: 'palm', environment: 'stadium' },
+    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x8795a8, snow: false, horizon: 0xd8ecff, prop: 'palm', environment: 'stadium', time: 'night' },
     points: [
       [0, 0, 0], [200, 0, 25], [420, 0, 32], [640, 0, 20],
       [810, 0, -40], [880, 0, -150], [855, 0, -255], [745, 0, -330],

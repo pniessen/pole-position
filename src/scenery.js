@@ -12,49 +12,62 @@ function hash(n) {
 
 // --- sky ---
 
-export function makeSkyDome(theme) {
+export function makeSkyDome(atmo) {
   const canvas = document.createElement('canvas');
-  canvas.width = 16;
+  canvas.width = 128;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  const top = new THREE.Color(theme.sky).offsetHSL(0, 0.05, -0.12);
-  const mid = new THREE.Color(theme.sky);
-  const horizon = new THREE.Color(theme.horizon ?? 0xdceeff);
+  const top = new THREE.Color(atmo.sky).offsetHSL(0, 0.05, -0.12);
+  const mid = new THREE.Color(atmo.sky);
+  const horizon = new THREE.Color(atmo.horizon ?? 0xdceeff);
   const grad = ctx.createLinearGradient(0, 0, 0, 256);
   grad.addColorStop(0, '#' + top.getHexString());
   grad.addColorStop(0.55, '#' + mid.getHexString());
   grad.addColorStop(0.78, '#' + horizon.getHexString());
   grad.addColorStop(1, '#' + horizon.getHexString());
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 16, 256);
+  ctx.fillRect(0, 0, 128, 256);
+  if (atmo.stars) {
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 90; i++) {
+      const x = hash(i * 3.3) * 128, y = hash(i * 7.7) * 140;
+      ctx.globalAlpha = 0.4 + hash(i) * 0.6;
+      ctx.fillRect(x, y, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1;
+  }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(2800, 24, 12),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false })
   );
-  const sun = new THREE.Mesh(
-    new THREE.CircleGeometry(theme.sunSize ?? 55, 24),
-    new THREE.MeshBasicMaterial({ color: theme.sunColor ?? 0xfff6d8, fog: false })
-  );
-  sun.position.set(900, 620, -1500);
-  sun.lookAt(0, 0, 0);
-  const halo = new THREE.Mesh(
-    new THREE.CircleGeometry((theme.sunSize ?? 55) * 1.8, 24),
-    new THREE.MeshBasicMaterial({ color: theme.sunColor ?? 0xfff6d8, fog: false, transparent: true, opacity: 0.25 })
-  );
-  halo.position.copy(sun.position).multiplyScalar(1.001);
-  halo.lookAt(0, 0, 0);
   const group = new THREE.Group();
-  group.add(dome, sun, halo);
+  group.add(dome);
+  if (atmo.sunVisible !== false) {
+    const sun = new THREE.Mesh(
+      new THREE.CircleGeometry(atmo.sunSize ?? 55, 24),
+      new THREE.MeshBasicMaterial({ color: atmo.sunColor ?? 0xfff6d8, fog: false })
+    );
+    const sunPos = atmo.sunPos ?? [900, 620, -1500];
+    sun.position.set(...sunPos);
+    sun.lookAt(0, 0, 0);
+    const halo = new THREE.Mesh(
+      new THREE.CircleGeometry((atmo.sunSize ?? 55) * 1.8, 24),
+      new THREE.MeshBasicMaterial({ color: atmo.sunColor ?? 0xfff6d8, fog: false, transparent: true, opacity: 0.25 })
+    );
+    halo.position.copy(sun.position).multiplyScalar(1.001);
+    halo.lookAt(0, 0, 0);
+    group.add(sun, halo);
+  }
   return group;
 }
 
 // --- clouds ---
 
-export function makeClouds(count = 10) {
+export function makeClouds(count = 10, color = 0xffffff) {
   const group = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, transparent: true, opacity: 0.92 });
+  const mat = new THREE.MeshBasicMaterial({ color, fog: false, transparent: true, opacity: 0.92 });
   const puffGeo = new THREE.SphereGeometry(1, 7, 5);
   const clouds = [];
   for (let i = 0; i < count; i++) {
@@ -209,6 +222,8 @@ function crowdTexture(seed) {
   return tex;
 }
 
+const FLAG_COLORS = [0xff5533, 0xffd21f, 0x22ccff, 0x35ff6a, 0xffffff];
+
 function makeStandUnit(seed) {
   const unit = new THREE.Group();
   const frame = new THREE.MeshLambertMaterial({ color: 0x4a5160 });
@@ -237,6 +252,51 @@ function makeStandUnit(seed) {
     unit.add(pole);
   }
   unit.add(roof);
+
+  // crowd life: waving flags on the roofline + camera flashes in the seats
+  const flags = [];
+  for (const fx of [-5.5, 5.5]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6, 6), frame);
+    pole.position.set(fx, 7.3, -1.2);
+    const flag = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.2, 0.7),
+      new THREE.MeshBasicMaterial({
+        color: FLAG_COLORS[Math.floor(hash(seed + fx) * FLAG_COLORS.length)],
+        side: THREE.DoubleSide,
+      })
+    );
+    flag.position.set(fx + 0.62, 7.75, -1.2);
+    flag.userData.phase = hash(seed * 3 + fx) * Math.PI * 2;
+    flag.userData.px = fx;
+    unit.add(pole, flag);
+    flags.push(flag);
+  }
+  const flash = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.55, 0.55),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+  );
+  flash.position.set(0, 3.2, -2.6);
+  flash.rotation.x = -Math.PI * 0.155;
+  unit.add(flash);
+
+  let t = hash(seed) * 10;
+  let flashLife = 0;
+  unit.userData.update = (dt) => {
+    t += dt;
+    for (const flag of flags) {
+      const wave = Math.sin(t * 3.2 + flag.userData.phase);
+      flag.rotation.y = wave * 0.55;
+      flag.position.x = flag.userData.px + 0.62 * Math.cos(wave * 0.55);
+    }
+    if (flashLife > 0) {
+      flashLife -= dt;
+      flash.material.opacity = Math.max(0, flashLife * 8);
+    } else if (hash(seed + Math.floor(t * 2)) < 0.045) {
+      flashLife = 0.1;
+      flash.position.x = (hash(seed + t) - 0.5) * 12;
+      flash.position.y = 2.2 + hash(seed * 7 + t) * 2.4;
+    }
+  };
   return unit;
 }
 

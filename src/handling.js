@@ -59,6 +59,13 @@ export function shiftGear(car, gear) {
   return { ...car, gear: Math.max(1, Math.min(GEARS.length, gear)) };
 }
 
+// Rain reduces cornering grip and braking bite; other weather leaves the
+// spec untouched.
+export function weatherSpec(spec, weather) {
+  if (weather !== 'rain') return spec;
+  return { ...spec, centrifugal: spec.centrifugal * 1.25, brakeDecel: spec.brakeDecel * 0.8 };
+}
+
 // 'up' when bouncing on the current gear's limiter, 'down' when lugging a
 // gear so tall that the lower gear would pull harder, else null.
 export function shiftAdvice(car, spec = CAR) {

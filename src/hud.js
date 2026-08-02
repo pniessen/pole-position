@@ -21,6 +21,7 @@ export function createHud() {
     </div>
     <div class="center hidden" id="countdown"></div>
     <canvas id="minimap" width="180" height="180"></canvas>
+    <canvas id="rainfx" class="hidden"></canvas>
     <div class="banner hidden" id="banner"></div>
     <div id="crashflash"></div>
     <div class="screen" id="attract">
@@ -70,10 +71,46 @@ export function createHud() {
     initials: $('initials'), entry: $('entry'),
     gameover: $('gameover'), gameoverTitle: $('gameover-title'),
     finalScore: $('final-score'), gameoverScores: $('gameover-scores'),
-    minimap: $('minimap'),
+    minimap: $('minimap'), rainfx: $('rainfx'),
     bannerTimer: 0, wasCrashed: false,
     mapPoints: null, mapTransform: null,
+    rainOn: false, drops: null,
   };
+}
+
+// --- rain overlay ---
+
+export function setRainFx(hud, on) {
+  if (on === hud.rainOn) return;
+  hud.rainOn = on;
+  hud.rainfx.classList.toggle('hidden', !on);
+  if (on && !hud.drops) {
+    hud.drops = Array.from({ length: 70 }, (_, i) => ({
+      x: (i * 137.5) % 1, y: (i * 89.3) % 1, len: 0.02 + (i % 5) * 0.008, speed: 1.1 + (i % 7) * 0.18,
+    }));
+  }
+}
+
+export function updateRainFx(hud, dt) {
+  if (!hud.rainOn) return;
+  const c = hud.rainfx;
+  if (c.width !== innerWidth || c.height !== innerHeight) {
+    c.width = innerWidth;
+    c.height = innerHeight;
+  }
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.strokeStyle = 'rgba(200, 215, 230, 0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (const d of hud.drops) {
+    d.y += d.speed * dt;
+    if (d.y > 1.05) { d.y -= 1.15; d.x = (d.x + 0.31) % 1; }
+    const x = d.x * c.width, y = d.y * c.height;
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - c.width * 0.006, y + c.height * d.len);
+  }
+  ctx.stroke();
 }
 
 // --- minimap ---
