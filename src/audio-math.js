@@ -82,7 +82,9 @@ export const WSG_HARMONICS = [1, 0.18, 0.55, 0.1, 0.32, 0.06, 0.2, 0.04, 0.11];
 
 // Audible range along-track (metres) and lateral pan scaling for the shared
 // nearest-rival voice.
-export const RIVAL = { range: 45, panSpan: 8, gainMax: 1 };
+// closeCurve > 1 keeps distant cars a faint hum while door-to-door passes
+// swell to full volume.
+export const RIVAL = { range: 45, panSpan: 8, gainMax: 1, closeCurve: 1.7 };
 
 // Signed wrapped distance from `from` to `to` in [-L/2, L/2).
 export function wrappedDelta(from, to, trackLength) {
@@ -104,7 +106,7 @@ export function rivalVoice(player, cars, trackLength, maxSpeed, basePitch = 1) {
     if (d < bestDist) { bestDist = d; best = { car, dx }; }
   }
   if (!best || bestDist >= RIVAL.range) return { gain: 0, pan: 0, rate: enginePlaybackRate(0, basePitch) };
-  const gain = RIVAL.gainMax * (1 - bestDist / RIVAL.range);
+  const gain = RIVAL.gainMax * Math.pow(1 - bestDist / RIVAL.range, RIVAL.closeCurve);
   const pan = Math.max(-1, Math.min(1, best.dx / RIVAL.panSpan));
   const frac = quantizePitch(clamp01(best.car.speed / maxSpeed));
   return { gain, pan, rate: enginePlaybackRate(frac, basePitch) };

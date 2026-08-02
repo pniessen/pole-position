@@ -176,7 +176,7 @@ export function updateRivalEngine(audio, player, cars, trackLength, maxSpeed) {
   if (!audio.rivalSrc) return;
   const v = rivalVoice(player, cars, trackLength, maxSpeed);
   const t = audio.ctx.currentTime;
-  audio.rivalGain.gain.setTargetAtTime(v.gain * 0.12, t, 0.08);
+  audio.rivalGain.gain.setTargetAtTime(v.gain * 0.34, t, 0.08);
   audio.rivalPan.pan.setTargetAtTime(v.pan, t, 0.08);
   if (v.gain > 0) audio.rivalSrc.playbackRate.setTargetAtTime(v.rate, t, 0.08);
 }
