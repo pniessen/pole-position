@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createTrack, curvatureAt, posAt, worldPose, countTurns, TRACKS } from './track.js';
-import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, weatherSpec, CARS, GEARS } from './handling.js';
+import { createCarState, stepCar, crashCar, isCrashed, isOffroad, shiftGear, shiftAdvice, weatherSpec, CARS } from './handling.js';
 import { createRace, startRace, updateRace, startLightState } from './race.js';
 import { createTraffic, updateTraffic, findCollision, draftFactor, createRacers, updateRacers, standings, RACERS } from './traffic.js';
 import { buildScene, makeHood } from './scene.js';
