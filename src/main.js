@@ -12,7 +12,7 @@ import { initTouch } from './touch.js';
 import { loadRecords, persistRecords, submitScore, qualifies, trackRecord, withTrackRecord } from './storage.js';
 import { createLapRecorder, recordLap, finishLap, sampleGhost } from './ghost.js';
 import { createEffects } from './effects.js';
-import { createAudio, unlock, updateEngine, updateRivalEngine, setSkid, playCrash, playJingle, playStartFanfare, playCountdownBeep, loadVoices, playVoice, startMusic, stopMusic, updateCrowd } from './audio.js';
+import { createAudio, unlock, updateEngine, updateRivalEngine, setSkid, playCrash, playJingle, playStartFanfare, playCountdownBeep, loadVoices, playVoice, startMusic, stopMusic, updateCrowd, setAudioSuspended } from './audio.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 document.body.appendChild(renderer.domElement);
@@ -232,6 +232,9 @@ function unlockAudio() {
   loadVoices(audio, VOICE_URLS);
 }
 
+// Background tabs freeze rAF, which freezes every audio gain at its last value.
+addEventListener('visibilitychange', () => setAudioSuspended(audio, document.hidden));
+
 addEventListener('keydown', (e) => {
   unlockAudio();
   if (race.phase === 'attract') startMusic(audio); // chiptune is menu-only
@@ -431,7 +434,11 @@ function update(dt) {
       onRaceEnded();
     }
   }
-  document.body.classList.toggle('racing', race.phase === 'racing' || race.phase === 'countdown');
+  // The car is only stepped while racing/counting down; outside those phases it
+  // keeps its last speed, so anything speed-driven must be silenced explicitly
+  // or it drones on under the game-over screen.
+  const driving = race.phase === 'racing' || race.phase === 'countdown';
+  document.body.classList.toggle('racing', driving);
   updateRivals(rivals);
   updateGhost();
   updateWorld(dt);
@@ -448,15 +455,18 @@ function update(dt) {
     : null;
   updateHud(hud, race, car, dt, advice, pos, draft);
   updateMinimap(hud, posAt(track, car.s), rivals.map((c) => posAt(track, c.s)));
-  setRainFx(hud, track.theme.weather === 'rain' && (race.phase === 'racing' || race.phase === 'countdown'));
+  setRainFx(hud, track.theme.weather === 'rain' && driving);
   updateRainFx(hud, dt);
   // engine revs climb within the current gear and drop on upshift; throttle
   // drives brightness and the off-throttle burble
-  updateEngine(audio, car.speed, car.gear, carDef.spec, carDef.enginePitch, input.throttle);
+  updateEngine(audio, driving ? car.speed : 0, car.gear, carDef.spec, carDef.enginePitch,
+    driving ? input.throttle : 0);
   updateRivalEngine(audio, car, race.phase === 'racing' ? rivals : [], track.length, carDef.spec.maxSpeed);
   const distToLine = Math.min(car.s, track.length - car.s);
-  updateCrowd(audio, race.phase === 'racing' || race.phase === 'countdown' ? 1 - Math.min(1, distToLine / 130) : 0);
-  setSkid(audio, (Math.abs(input.steer) > 0.9 && car.speed > 0.7 * carDef.spec.maxSpeed) || (isOffroad(car) && car.speed > 5));
+  updateCrowd(audio, driving ? 1 - Math.min(1, distToLine / 130) : 0);
+  setSkid(audio, driving
+    && ((Math.abs(input.steer) > 0.9 && car.speed > 0.7 * carDef.spec.maxSpeed)
+      || (isOffroad(car) && car.speed > 5)));
 }
 
 openTitle();
@@ -482,6 +492,16 @@ window.__game = {
   press: (code) => { if (race.phase === 'attract') menuKey(code); else keys.add(code); },
   release: (code) => keys.delete(code),
   crash: () => { car = crashCar(car); playCrash(audio); },
+  // Audible-output probe: every gain that could latch on when the game isn't
+  // being driven. Used to prove silence on the game-over screen / hidden tab.
+  audioLevels: () => (audio.ctx ? {
+    ctxState: audio.ctx.state,
+    engine: audio.engineGain?.gain.value ?? null,
+    wind: audio.windGainNode?.gain.value ?? null,
+    rival: audio.rivalGain?.gain.value ?? null,
+    skid: audio.skidGain?.gain.value ?? null,
+    crowd: audio.crowdGain?.gain.value ?? null,
+  } : null),
   setTrack: (i) => { setTrack(i); openTrackSelect(); },
   trackName: () => track.name,
   setCar: (i) => { setCar(i); openCarSelect(); },

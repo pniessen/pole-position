@@ -102,12 +102,27 @@ crash stack and menu chiptune are still deliberately retro.
   off voice fetch/decode). All node-graph code fails silent via try/catch — which
   means a broken graph is *invisible*; verify by rendering it through an
   `OfflineAudioContext` in the browser pane rather than trusting a clean console.
+- **Nothing may be left latched when the game isn't being driven.** The car is only
+  stepped while `racing`/`countdown`, so outside those phases it *keeps its last
+  speed* — anything speed-driven (engine, skid, crowd, wind) must be explicitly
+  gated on the `driving` flag in `update()` or it drones under the game-over screen.
+  Likewise rAF stops in a hidden tab, freezing every gain at its last value, so
+  `visibilitychange` suspends the whole context (`setAudioSuspended`). Both were
+  real bugs. `window.__game.audioLevels()` exists to prove silence — it reports
+  `ctxState` plus every latchable gain.
 
 ## Headless testing & dev tooling
 
 - **The Claude browser pane doesn't fire rAF while hidden.** Use the
   `window.__game` hooks in main.js to drive the game from `javascript_tool`:
-  `getState / press / release / crash / setTrack / setCar / setMode / step(dt)`.
+  `getState / press / release / crash / setTrack / setCar / setMode / step(dt) /
+  audioLevels`. `setTrack`/`setCar`/`setMode` take an **index**, not a name.
+- The pane also reports `document.hidden === true`, so the visibility auto-suspend
+  keeps audio parked there. To test audio, override `document.hidden` to `false` and
+  dispatch a `visibilitychange` first. Unlocking still needs a real gesture — a
+  `computer` click works, `__game.press` does not (it bypasses the keydown listener).
+- `step(seconds)` renders once per call, so `step(20)` is vastly cheaper than 1200
+  calls to `step(1/60)` — the latter wedges the renderer and times the tool out.
 - `?touch=1` URL param forces touch mode for desktop testing of mobile UI.
 - Dev-only vite middleware `/dev-screenshot`: POST a canvas dataURL →
   `docs/media/screenshot.png`, or `?name=foo.png` (sanitized) → `public/foo.png`.

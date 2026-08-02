@@ -186,6 +186,18 @@ function buildCrowd(audio) {
   audio.crowdGain = gain;
 }
 
+// Park the whole graph when the page is hidden. rAF stops firing in a
+// background tab, so updateEngine stops being called and every gain stays
+// latched at whatever it was — a backgrounded race would otherwise hum at you
+// forever. Suspending releases the output device rather than merely muting it.
+export function setAudioSuspended(audio, suspended) {
+  if (!audio.ctx) return;
+  try {
+    if (suspended) audio.ctx.suspend();
+    else if (audio.ctx.state === 'suspended') audio.ctx.resume();
+  } catch { /* run silent */ }
+}
+
 // level 0..1 — cheering swells as the grandstands approach
 export function updateCrowd(audio, level) {
   if (!audio.crowdGain) return;
