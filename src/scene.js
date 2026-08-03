@@ -3,16 +3,20 @@ import { worldPose, posAt, tangentAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
 import { makeSkyDome, makeClouds, makeBirds, makeBlimp, makeStartLights, makeGrandstands, makeProps, makeEnvironment } from './scenery.js';
 import { makeCarModel } from './carmodels.js';
+import * as PALETTE from './palette.js';
 
 function jitter(n) {
   const x = Math.sin(n * 91.7 + 33.3) * 43758.5453;
   return x - Math.floor(x);
 }
 
-const ROADCOL = new THREE.Color(0x555a5e);
-const RUMBLE_A = new THREE.Color(0xe01818);
-const RUMBLE_B = new THREE.Color(0xffffff);
-const LINE = new THREE.Color(0xf7f7e8);
+// Racing surfaces come from the real 1982 colour PROMs — see src/palette.js and
+// docs/research/1982-palette-and-graphics.md. Per-track themes still own the sky,
+// grass and scenery; the tarmac is the same on every circuit, as it is in life.
+const ROADCOL = new THREE.Color(PALETTE.ROAD);
+const RUMBLE_A = new THREE.Color(PALETTE.KERB_RED);
+const RUMBLE_B = new THREE.Color(PALETTE.KERB_WHITE);
+const LINE = new THREE.Color(PALETTE.KERB_WHITE);
 
 export const RIVAL_COLORS = [0xff5533, 0xffcc22, 0x22ccff, 0xcc44ff, 0x44ff77, 0xff8844, 0x4488ff];
 
@@ -261,6 +265,10 @@ function atmosphere(theme) {
     ambient: 0.85, ambientColor: 0xffffff, sunLight: 1.1, sunLightColor: 0xfff2cc,
     sunVisible: true, sunColor: theme.sunColor, sunSize: theme.sunSize,
     sunPos: undefined, stars: false, roadShade: 1,
+    // Plain-daylight circuits opt into the authentic five-band sky. The dark
+    // horizon strip stays the theme's own colour so it still meets the fog.
+    skyBands: theme.sky1982 ? PALETTE.SKY_BANDS : undefined,
+    skyHorizon: theme.horizon,
   };
   if (theme.time === 'sunset') {
     return { ...base,
@@ -345,7 +353,7 @@ export function buildScene(track) {
   });
 
   // start gantry + checkpoint arch
-  scene.add(makeArch(track, 0, 0xdddddd, 'START'));
+  scene.add(makeArch(track, 0, PALETTE.KERB_WHITE, 'START'));
   scene.add(makeArch(track, track.checkpoints[1], 0xf2c522, 'CHECKPOINT'));
 
   // spectacle: sky traffic, grandstands, start lights, theme flora

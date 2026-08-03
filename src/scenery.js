@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { worldPose, posAt } from './track.js';
 import { ROAD_HALF_WIDTH } from './handling.js';
+import * as PALETTE from './palette.js';
 
 // deterministic pseudo-random in [0,1) so rebuilds look identical
 function hash(n) {
@@ -17,16 +18,44 @@ export function makeSkyDome(atmo) {
   canvas.width = 128;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  const top = new THREE.Color(atmo.sky).offsetHSL(0, 0.05, -0.12);
-  const mid = new THREE.Color(atmo.sky);
-  const horizon = new THREE.Color(atmo.horizon ?? 0xdceeff);
-  const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#' + top.getHexString());
-  grad.addColorStop(0.55, '#' + mid.getHexString());
-  grad.addColorStop(0.78, '#' + horizon.getHexString());
-  grad.addColorStop(1, '#' + horizon.getHexString());
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 256);
+  if (atmo.skyBands) {
+    // The 1982 hardware drew the sky as discrete strips, not a gradient — five
+    // bands darkening toward the horizon.
+    //
+    // SphereGeometry runs v=0 at the zenith to v=1 at the nadir, so the horizon
+    // sits at v=0.5 and a 68 deg FOV only ever shows v≈0.28..0.50. Spreading the
+    // bands over the whole dome would put four of them out of shot and leave the
+    // sky looking flat, so they are packed into the slice the player can see.
+    const bands = atmo.skyBands;
+    // Measured by sampling the framebuffer, not guessed: with the camera pitched
+    // down at the road, the sky actually on screen spans only v≈0.34..0.44 —
+    // above that is out of frame, below it the grandstands and terrain take over.
+    // All five bands are packed into that slice, or most of them would never be
+    // seen and the sky would read as one flat colour.
+    const top = Math.round(256 * 0.34);
+    const bandEnd = Math.round(256 * 0.45);
+    ctx.fillStyle = PALETTE.css(bands[0]);
+    ctx.fillRect(0, 0, 128, top); // cap, in case the camera pitches up
+    for (let i = 0; i < bands.length; i++) {
+      const y0 = top + Math.round(((bandEnd - top) * i) / bands.length);
+      const y1 = top + Math.round(((bandEnd - top) * (i + 1)) / bands.length);
+      ctx.fillStyle = PALETTE.css(bands[i]);
+      ctx.fillRect(0, y0, 128, y1 - y0);
+    }
+    ctx.fillStyle = PALETTE.css(atmo.skyHorizon ?? PALETTE.HORIZON);
+    ctx.fillRect(0, bandEnd, 128, 256 - bandEnd);
+  } else {
+    const top = new THREE.Color(atmo.sky).offsetHSL(0, 0.05, -0.12);
+    const mid = new THREE.Color(atmo.sky);
+    const horizon = new THREE.Color(atmo.horizon ?? 0xdceeff);
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#' + top.getHexString());
+    grad.addColorStop(0.55, '#' + mid.getHexString());
+    grad.addColorStop(0.78, '#' + horizon.getHexString());
+    grad.addColorStop(1, '#' + horizon.getHexString());
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 256);
+  }
   if (atmo.stars) {
     ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 90; i++) {
@@ -38,6 +67,8 @@ export function makeSkyDome(atmo) {
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  // Hard band edges, not blurred ones — the cabinet had no interpolation.
+  if (atmo.skyBands) tex.magFilter = THREE.NearestFilter;
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(2800, 24, 12),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false })

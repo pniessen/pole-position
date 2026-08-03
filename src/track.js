@@ -19,7 +19,7 @@ export const TRACKS = [
   {
     name: 'FUJI SPEEDWAY',
     tagline: 'Fast, flowing classic beneath the snow-capped mountain',
-    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true, horizon: 0xcfe8ff, prop: 'pine' },
+    theme: { sky: 0x63b1ff, grass: 0x3cb043, mountain: 0x7d8ca3, snow: true, horizon: 0xcfe8ff, prop: 'pine', sky1982: true },
     points: [
       [0, 0, 0], [140, 0, 0], [280, 0, -10], [380, 0, -60],
       [420, 2, -140], [380, 4, -220], [280, 5, -260], [180, 4, -230],
@@ -98,7 +98,7 @@ export const TRACKS = [
     name: 'MONACO',
     tagline: 'Threading the needle through the streets of Monte Carlo',
     scale: 1.2,
-    theme: { sky: 0x6fc4ff, grass: 0x8f959e, mountain: 0x9aa5b5, snow: false, horizon: 0xe8f2fa, prop: 'palm', environment: 'urban' },
+    theme: { sky: 0x6fc4ff, grass: 0x8f959e, mountain: 0x9aa5b5, snow: false, horizon: 0xe8f2fa, prop: 'palm', environment: 'urban', sky1982: true },
     points: [
       // uphill north to Casino, hairpin, then the harbor-front return south
       [0, 2, 0], [110, 3, -5], [180, 5, 15], [215, 8, 60],
@@ -113,7 +113,7 @@ export const TRACKS = [
   {
     name: 'INDIANAPOLIS',
     tagline: 'The Brickyard — four left turns at full throttle',
-    theme: { sky: 0x74baff, grass: 0x4aa54a, mountain: 0x8795a8, snow: false, horizon: 0xdcecff, prop: 'pine', environment: 'stadium' },
+    theme: { sky: 0x74baff, grass: 0x4aa54a, mountain: 0x8795a8, snow: false, horizon: 0xdcecff, prop: 'pine', environment: 'stadium', sky1982: true },
     points: [
       [0, 0, 0], [250, 0, 0], [550, 0, 0], [780, 0, -15],
       [840, 0, -90], [845, 0, -190], [790, 0, -260], [560, 0, -278],
@@ -135,7 +135,7 @@ export const TRACKS = [
     name: 'LAGUNA SECA',
     tagline: 'Hold your breath — down the Corkscrew',
     scale: 1.4,
-    theme: { sky: 0x7cc4f2, grass: 0xc4a95e, mountain: 0xa8905e, snow: false, horizon: 0xf2e8d0, prop: 'pine', environment: 'hills' },
+    theme: { sky: 0x7cc4f2, grass: 0xc4a95e, mountain: 0xa8905e, snow: false, horizon: 0xf2e8d0, prop: 'pine', environment: 'hills', sky1982: true },
     // wavy radial loop: tight radius pinches for the hairpins, and the
     // 14→9→6 elevation plunge is the Corkscrew
     points: radialLoop(
@@ -147,7 +147,7 @@ export const TRACKS = [
   {
     name: 'COTA',
     tagline: 'Austin heat — the uphill charge into Turn 1',
-    theme: { sky: 0x74baff, grass: 0x46a04b, mountain: 0x97a2b2, snow: false, horizon: 0xe4f0ff, prop: 'cactus', environment: 'plains' },
+    theme: { sky: 0x74baff, grass: 0x46a04b, mountain: 0x97a2b2, snow: false, horizon: 0xe4f0ff, prop: 'cactus', environment: 'plains', sky1982: true },
     points: [
       [0, 0, 0], [140, 4, 0], [215, 10, 10], [240, 11, 60],
       [200, 10, 115], [100, 6, 150], [20, 4, 120], [-60, 3, 160],

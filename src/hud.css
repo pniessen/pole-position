@@ -19,7 +19,7 @@
   font-size: clamp(16px, 2.6vw, 28px);
 }
 
-#hud .topbar .label { color: #ffd21f; margin-right: 8px; }
+#hud .topbar .label { color: #e0bc70; margin-right: 8px; }
 
 #gear.hint { color: #35ff6a; }
 
@@ -27,7 +27,7 @@
 
 .board-caption { color: #6fd6ff; font-size: clamp(11px, 1.8vw, 16px); margin-bottom: 4px; letter-spacing: 0.12em; }
 
-#hud #time.low { color: #ff4040; animation: blink 0.5s steps(2) infinite; }
+#hud #time.low { color: #d21f1f; animation: blink 0.5s steps(2) infinite; }
 
 @keyframes blink { 50% { opacity: 0.25; } }
 
@@ -37,7 +37,7 @@
   width: 100%;
   text-align: center;
   font-size: clamp(40px, 9vw, 110px);
-  color: #ffd21f;
+  color: #e0bc70;
 }
 
 #hud .banner {
@@ -65,7 +65,7 @@ body.touch .screen { pointer-events: auto; }
 
 .screen h1 {
   font-size: clamp(40px, 8vw, 90px);
-  color: #ffd21f;
+  color: #e0bc70;
   margin: 0;
   letter-spacing: 0.08em;
   text-shadow: 4px 4px 0 #c41111, 8px 8px 0 #000;
@@ -75,13 +75,13 @@ body.touch .screen { pointer-events: auto; }
 
 .screen .blink { animation: blink 1s steps(2) infinite; color: #35ff6a; }
 
-.screen .trackpick { color: #ffd21f; letter-spacing: 0.15em; }
+.screen .trackpick { color: #e0bc70; letter-spacing: 0.15em; }
 
 .select-title { color: #6fd6ff; letter-spacing: 0.2em; }
 
 .select-card {
   background: rgba(10, 14, 30, 0.85);
-  border: 3px solid #ffd21f;
+  border: 3px solid #e0bc70;
   border-radius: 10px;
   padding: 16px 22px;
   width: min(460px, 88vw);
@@ -106,7 +106,7 @@ body.touch .screen { pointer-events: auto; }
 
 .stat-row { display: flex; align-items: center; gap: 10px; font-size: clamp(11px, 1.7vw, 16px); }
 
-.stat-label { width: 7.5em; text-align: right; color: #ffd21f; }
+.stat-label { width: 7.5em; text-align: right; color: #e0bc70; }
 
 .stat-bar {
   flex: 1;
@@ -118,7 +118,7 @@ body.touch .screen { pointer-events: auto; }
 .stat-fill {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #35ff6a, #ffd21f);
+  background: linear-gradient(90deg, #35ff6a, #e0bc70);
 }
 
 .stat-value { color: #fff; white-space: nowrap; }
@@ -156,8 +156,8 @@ body.touch .screen { pointer-events: auto; }
 }
 
 .screen table td { padding: 2px 18px; }
-.screen table .rank { color: #ffd21f; }
-.screen table .top { color: #ff4040; }
+.screen table .rank { color: #e0bc70; }
+.screen table .top { color: #d21f1f; }
 
 #initials .entry {
   font-size: clamp(40px, 8vw, 80px);
@@ -301,7 +301,7 @@ body.touch.racing #touch-ui .drive { display: flex; }
   text-shadow: 2px 2px 0 #000;
 }
 
-#touch-ui .gbtn small { font-size: 1.2vh; color: #ffd21f; }
+#touch-ui .gbtn small { font-size: 1.2vh; color: #e0bc70; }
 
 #touch-ui .gbtn.suggest {
   border-color: #35ff6a;
@@ -332,7 +332,7 @@ body.touch.racing #touch-ui .drive { display: flex; }
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 20, 0.92);
-  color: #ffd21f;
+  color: #e0bc70;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -373,7 +373,7 @@ body.touch .navbtn {
   width: max(52px, 8vw);
   height: max(72px, 20vh);
   font-size: max(26px, 5vh);
-  color: #ffd21f;
+  color: #e0bc70;
   background: rgba(255, 255, 255, 0.12);
   border: 2px solid rgba(255, 210, 31, 0.6);
   border-radius: 12px;

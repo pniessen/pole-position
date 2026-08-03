@@ -156,7 +156,7 @@ export function updateMinimap(hud, player, rivals) {
     ctx.fill();
   };
   dot(hud.mapPoints[0], 3.5, '#111');
-  dot(hud.mapPoints[Math.floor(hud.mapPoints.length / 2)], 3.5, '#ffd21f');
+  dot(hud.mapPoints[Math.floor(hud.mapPoints.length / 2)], 3.5, '#e0bc70');
   // rivals then player on top
   for (const r of rivals) dot(r, 3, '#ff5533');
   dot(player, 4.5, '#fff');
